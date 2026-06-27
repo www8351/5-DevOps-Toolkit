@@ -16,13 +16,25 @@ GitHub as a public repo.
 - [x] Syntax + shellcheck pass; non-destructive smoke tests.
 - [x] Published to GitHub (`gh repo create … --public --push`).
 
+## Done (added 2026-06-27)
+- [x] `04-network-ssh/ssh_toolkit/` — cross-platform Python SSH automation package.
+- [x] `setup.sh` + `setup.ps1` bootstrappers (venv creation, dep install, arg forwarding).
+- [x] `requirements.txt` (paramiko + tomli compat shim).
+- [x] `config.example.toml` — zero-hardcoding config template.
+- [x] `name_echo.sh` — interactive name-echo demo from lab walkthrough.
+- [x] `04-network-ssh/README.md` updated with full ssh_toolkit docs.
+- [x] Lifecycle files (`STATUS`, `PROGRESS`, `DECISIONS`) updated.
+
 ## Open / not done
 - [ ] CI (GitHub Actions running `shellcheck` on every push) — nice-to-have, not built.
-- [ ] Unit tests (e.g. `bats`) — out of scope for v1.
+- [ ] Unit tests (e.g. `bats` / `pytest`) — out of scope for v1.
 - [ ] Asciinema demo GIFs in the README.
+- [ ] `ssh_toolkit` has not been smoke-tested against a live VM (needs a real two-VM lab).
 
 ## Next best action
-Add a `.github/workflows/shellcheck.yml` so the "ShellCheck-clean" badge is enforced, not just claimed.
+1. Copy `config.example.toml` → `config.toml`, fill in host/user.
+2. Run `./setup.sh all --host <IP> --user <USER>` on a Linux VM to verify the full flow.
+3. Add `.github/workflows/shellcheck.yml` to enforce the "ShellCheck-clean" badge.
 
 ## Blockers / waiting on
 None.
