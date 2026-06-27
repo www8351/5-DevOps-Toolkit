@@ -1,0 +1,23 @@
+# ssh_toolkit configuration template.
+# Copy this file to config.toml, fill in your values, then run:
+#   ./setup.sh          (Linux / macOS)
+#   .\setup.ps1         (Windows)
+#
+# config.toml is gitignored — never commit it.
+# Precedence: CLI flags > SSHTK_* env vars > this file > interactive prompt.
+
+[ssh]
+host    = ""              # target VM IP or hostname,  e.g. "193.168.1.1"
+user    = ""              # remote username,            e.g. "refael"
+port    = 22
+keyfile = ""              # leave blank for ~/.ssh/id_ed25519
+
+[transfer]
+src  = ""                 # local file to push,  e.g. "/home/refael/Desktop/file.txt"
+dest = ""                 # remote destination,  e.g. "/home/refael/Desktop/"
+
+[network]
+interface = "enp0s8"      # NIC to configure  (run "ip addr" to find it)
+address   = ""            # static IP to assign,          e.g. "193.168.1.2"
+netmask   = "255.255.255.0"
+gateway   = ""            # peer IP to ping-validate,     e.g. "193.168.1.1"
