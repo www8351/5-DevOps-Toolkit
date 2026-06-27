@@ -12,11 +12,17 @@ id_ed25519.pub
 id_rsa
 id_rsa.pub
 
-# ── python (05-docker-devops/ec2-deploy.py) ──────────────────────────────────
+# ── python (05-docker-devops/ec2-deploy.py, 04-network-ssh/ssh_toolkit) ──────
 __pycache__/
 *.pyc
 .venv/
 venv/
+
+# ── ssh_toolkit user config (contains IPs / credentials) ─────────────────────
+04-network-ssh/config.toml
+
+# ── network interface backups created by network_manager.py ──────────────────
+*.bak.*
 
 # ── backups produced by 01-file-text-toolkit/backup.sh ───────────────────────
 *.tar.bz2

@@ -57,6 +57,38 @@ reading the repo.
 
 ---
 
+### D8 — `ssh_toolkit` as a Python package, not a shell extension of `sshkey.sh`
+**Decision:** The cross-platform automation lives in a new `ssh_toolkit/` Python package alongside the
+existing `sshkey.sh` (which is kept as-is for simple Linux/macOS key generation).
+**Why:** True Windows-native automation requires `ssh-copy-id` equivalent, SFTP, and PowerShell-based
+NIC config — impossible to do cleanly in Bash. Python 3 is available everywhere and matches the
+existing boto3/Python tooling in `05-docker-devops/ec2-deploy.py`.
+**Rejected:** Bash-only extension — would require WSL or Git Bash on Windows (not truly native).
+**Status:** Final.
+
+---
+
+### D9 — `net` subcommand defaults to dry-run; requires `--apply`
+**Decision:** `python -m ssh_toolkit net` prints the plan but does NOT touch any NIC unless `--apply`
+is passed. The `all` subcommand only runs the network step when `--with-network` is given.
+**Why:** Misconfiguring a NIC can cut off remote access with no easy recovery. Dry-run-by-default
+makes the tool safe to call freely without risk of host isolation.
+**Rejected:** Always-apply (too dangerous), always-skip (the user explicitly asked for it).
+**Status:** Final.
+
+---
+
+### D10 — Native tools first, paramiko fallback
+**Decision:** Every SSH operation tries the native binary first (`ssh`, `scp`, `ssh-copy-id`) and
+falls back to paramiko only when the binary is absent (e.g. Windows without OpenSSH).
+**Why:** Native tools are battle-tested, respect `~/.ssh/config`, and avoid re-implementing TLS.
+paramiko is only strictly needed for the password-based `copy_id` step on Windows.
+**Rejected:** paramiko-only — adds complexity and loses native-tool compatibility with user's existing
+configs. Subprocess-only — `ssh-copy-id` isn't on Windows.
+**Status:** Final.
+
+---
+
 ### D7 — Build via a parallel multi-agent workflow
 **Decision:** One agent per folder wrote that folder's scripts + README, each followed by a review agent.
 **Why:** 5 disjoint folders parallelise cleanly; the review pass catches contract violations before commit.
