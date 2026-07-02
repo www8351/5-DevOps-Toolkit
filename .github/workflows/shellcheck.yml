@@ -1,0 +1,34 @@
+name: shellcheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: shellcheck + bash -n
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax check (bash -n)
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do
+            bash -n "$f" || { echo "::error file=$f::bash -n failed"; fail=1; }
+          done < <(find . -type f -name '*.sh' -print0)
+          exit $fail
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        env:
+          # SC1091: don't try to follow `source lib/common.sh` (resolved at runtime).
+          SHELLCHECK_OPTS: -e SC1091
+        with:
+          severity: warning
+          scandir: '.'
