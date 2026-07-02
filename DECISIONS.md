@@ -93,3 +93,16 @@ configs. Subprocess-only — `ssh-copy-id` isn't on Windows.
 **Decision:** One agent per folder wrote that folder's scripts + README, each followed by a review agent.
 **Why:** 5 disjoint folders parallelise cleanly; the review pass catches contract violations before commit.
 **Status:** Final for v1.
+
+---
+
+### D11 — CI on `main` via GitHub Actions (shellcheck + ruff), lenient by design
+**Decision:** Two workflows run on push/PR to `main`: `shellcheck.yml` (`bash -n` + shellcheck at
+`severity: warning`, `-e SC1091`) and `python.yml` (`py_compile` + `ruff` restricted to real-error rules
+`E9,F63,F7,F82`).
+**Why:** Enforces the "ShellCheck-clean" claim instead of trusting it. `SC1091` is ignored because scripts
+`source lib/common.sh` at runtime (static analysis can't follow it). Ruff is scoped to real errors, not
+style, so CI stays a meaningful gate without failing on cosmetic nits that would discourage commits.
+**Rejected:** Full `ruff` default ruleset (too noisy for an existing codebase, would go red immediately);
+no CI (leaves the badge as an unverified claim).
+**Status:** Final; rules can tighten later once a baseline is clean.

@@ -1,6 +1,6 @@
 # STATUS
 
-_Last updated: 2026-06-27_
+_Last updated: 2026-07-02_
 
 ## Where the project stands
 **MVP complete.** A 5-module DevOps shell toolkit (`devops-toolkit-5`) is built, reviewed and pushed to
@@ -25,9 +25,14 @@ GitHub as a public repo.
 - [x] `04-network-ssh/README.md` updated with full ssh_toolkit docs.
 - [x] Lifecycle files (`STATUS`, `PROGRESS`, `DECISIONS`) updated.
 
+## Done (added 2026-07-02) — Phase 1: CI
+- [x] `.github/workflows/shellcheck.yml` — `shellcheck` (warning, -e SC1091) + `bash -n` on push/PR.
+- [x] `.github/workflows/python.yml` — `py_compile` + `ruff` (real errors) for `ssh_toolkit` + `ec2-deploy.py`.
+- [x] README badges switched to live Actions status; badge repo slug fixed to real remote `5-DevOps-Toolkit`.
+- [x] Committed workspace `CLAUDE.md` (lifecycle protocol now tracked).
+
 ## Open / not done
-- [ ] CI (GitHub Actions running `shellcheck` on every push) — nice-to-have, not built.
-- [ ] Unit tests (e.g. `bats` / `pytest`) — out of scope for v1.
+- [ ] Unit tests (e.g. `bats` / `pytest`) — Phase 2 (in progress).
 - [ ] Asciinema demo GIFs in the README.
 - [ ] `ssh_toolkit` has not been smoke-tested against a live VM (needs a real two-VM lab).
 
@@ -40,6 +45,10 @@ GitHub as a public repo.
 None.
 
 ## Needs review
+**Repo-name mismatch:** GitHub remote is `www8351/5-DevOps-Toolkit`, but README (clone URL, layout tree)
+and lifecycle files call the project `devops-toolkit-5`. Badges were fixed to the real slug; the clone URL
+and prose still say `devops-toolkit-5`. Decide the canonical name and align.
+
 Destructive/root scripts (`newuser.sh`, `mkswap.sh`, `pkg.sh`, `install-jenkins.sh`, `grant-sudo.sh`) were
 verified via `-h` and `DRY_RUN` only — they were **not** executed against a live system. Run them in a
 throwaway VM/WSL before relying on them.

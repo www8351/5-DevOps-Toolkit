@@ -4,6 +4,29 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-07-02 — Phase 1: Continuous Integration (GitHub Actions)
+
+**Goal:** Close the "no CI" open item and make the repo's quality bar enforced, not aspirational — so the
+git log reads like a progress timeline (small atomic commits, pushed per phase).
+
+**What was done**
+- `.github/workflows/shellcheck.yml` — `bash -n` syntax gate over every `*.sh` + `ludeeus/action-shellcheck`
+  at `severity: warning`, ignoring `SC1091` (scripts `source lib/common.sh` at runtime).
+- `.github/workflows/python.yml` — `python -m py_compile` on `ssh_toolkit` + `ec2-deploy.py`, plus
+  `ruff check --select E9,F63,F7,F82` (real errors only, not style — keeps CI signal high without churn).
+- README: replaced the static "ShellCheck-clean" shield with **live** shellcheck + python Actions badges.
+- Committed the previously-untracked workspace `CLAUDE.md`.
+
+**What was tried / found**
+- `py_compile` verified locally against all `.py` before pushing the workflow → CI should be green.
+- Discovered the GitHub remote is `5-DevOps-Toolkit` while docs say `devops-toolkit-5`; fixed badge slugs to
+  the real remote and logged the wider naming mismatch under STATUS "Needs review".
+- shellcheck is not installed on the Windows dev box → shell linting is delegated to CI.
+
+**Commit style:** 5 small atomic commits (track CLAUDE.md → shellcheck wf → python wf → badges → this sync).
+
+---
+
 ## 2026-06-27 — Project created from a command cheat-sheet
 
 **Goal:** Turn a hand-written list of Linux / network / Docker / AWS commands into a portfolio repo of
