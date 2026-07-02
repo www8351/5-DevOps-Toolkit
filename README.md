@@ -9,17 +9,19 @@
 
 <br/>
 
+[![shellcheck](https://github.com/www8351/5-DevOps-Toolkit/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/www8351/5-DevOps-Toolkit/actions/workflows/shellcheck.yml)
+[![python](https://github.com/www8351/5-DevOps-Toolkit/actions/workflows/python.yml/badge.svg)](https://github.com/www8351/5-DevOps-Toolkit/actions/workflows/python.yml)
+<br/>
 ![Bash](https://img.shields.io/badge/Bash-5%2B-4EAA25?logo=gnubash&logoColor=white)
-![ShellCheck](https://img.shields.io/badge/ShellCheck-clean-brightgreen?logo=gnu&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-WSL%20%7C%20Ubuntu-FCC624?logo=linux&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-boto3-FF9900?logo=amazonaws&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white)
 <br/>
-![License](https://img.shields.io/github/license/www8351/devops-toolkit-5?color=blue)
-![Last commit](https://img.shields.io/github/last-commit/www8351/devops-toolkit-5?color=informational)
-![Repo size](https://img.shields.io/github/repo-size/www8351/devops-toolkit-5)
-![Stars](https://img.shields.io/github/stars/www8351/devops-toolkit-5?style=social)
+![License](https://img.shields.io/github/license/www8351/5-DevOps-Toolkit?color=blue)
+![Last commit](https://img.shields.io/github/last-commit/www8351/5-DevOps-Toolkit?color=informational)
+![Repo size](https://img.shields.io/github/repo-size/www8351/5-DevOps-Toolkit)
+![Stars](https://img.shields.io/github/stars/www8351/5-DevOps-Toolkit?style=social)
 
 </div>
 
