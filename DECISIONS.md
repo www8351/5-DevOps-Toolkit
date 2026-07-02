@@ -129,3 +129,19 @@ end-to-end tests (brittle, low ROI); no tests (leaves the quality bar unenforced
 **Why:** Help that fails when a dependency is absent is useless exactly when a user is trying to learn how to
 install/use the tool. `portscan.sh` (Phase 1) and `sshkey.sh` (Phase 2) violated this and were fixed.
 **Status:** Final; new tools must satisfy the smoke test.
+
+---
+
+### D14 — Makefile as the CI mirror; `tasks.ps1` as the Windows twin
+**Decision:** A `Makefile` wraps the exact lint/test commands CI runs (single set of target names), and a
+`tasks.ps1` mirrors it for Windows PowerShell. Windows-absent tools (shellcheck, bats) and an unusable
+`bash` are **skipped with a warning**, not treated as failures, so `lint`/`test` still exit 0 on Windows.
+Python tools are invoked via `python -m pytest` / `python -m ruff` (the launcher is reliably on PATH; the
+bare shims often are not). A CI `makefile` job (`make -n all`) proves the Makefile stays valid.
+**Why:** Contributors get one obvious command per platform; the owner develops on Windows where `make`,
+`shellcheck`, `bats` are typically absent and `bash` may be a broken WSL stub — hard-failing there would make
+the runner useless. Skipping-with-warning keeps it usable while CI remains the authoritative gate.
+**Rejected:** Makefile-only (unusable on the owner's Windows box); duplicating command strings across CI +
+Makefile + docs with no cross-check (drift — the CI `makefile` job guards against it); hard-failing on
+missing Windows tools (turns a convenience into a blocker).
+**Status:** Final.

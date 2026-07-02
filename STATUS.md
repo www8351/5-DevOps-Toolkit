@@ -39,13 +39,18 @@ GitHub as a public repo.
 - [x] Fixed `portscan.sh` + `sshkey.sh`: `-h` now works before `need_cmd` (help-before-deps contract).
 - [x] Verified via adversarial multi-agent review + real CI run (bats caught the `COMMON`-export blocker pre-merge).
 
+## Done (added 2026-07-02) — Phase 3: Task runner
+- [x] `Makefile` — help/syntax/shellcheck/ruff/lint/bats/pytest/test/all; mirrors CI; self-documenting help.
+- [x] `tasks.ps1` — Windows PowerShell mirror (same targets); `python -m` for py tools; skips Win-absent tools.
+- [x] CI `makefile` job (`make help` + `make -n all`) proves the Makefile parses/resolves — all 5 jobs green.
+- [x] README `## Development` section documents both runners.
+
 ## Open / not done
-- [ ] Asciinema demo GIFs in the README — Phase 4.
-- [ ] Makefile / task runner — Phase 3.
+- [ ] Demo assets (asciinema/GIF) in the README — Phase 4 (recording needs a live terminal — user step).
 - [ ] `ssh_toolkit` has not been smoke-tested against a live VM (needs a real two-VM lab).
 
 ## Next best action
-1. Phase 3: add `Makefile` (help/lint/test/all) + `tasks.ps1` Windows mirror.
+1. Phase 4: `docs/demo.sh` + `docs/DEMO.md` recording instructions + `CONTRIBUTING.md`.
 2. Copy `config.example.toml` → `config.toml`, fill in host/user; run `./setup.sh all …` on a Linux VM.
 3. Resolve the repo-name mismatch (see Needs review).
 

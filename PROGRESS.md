@@ -4,6 +4,37 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-07-02 — Phase 3: Task runner (Makefile + tasks.ps1)
+
+**Goal:** One entrypoint for lint/test, usable on Linux/WSL/macOS (`make`) and the owner's Windows box
+(`tasks.ps1`), mirroring CI so contributors run the same checks locally.
+
+**What was done**
+- `Makefile` — targets help/syntax/shellcheck/ruff/lint/bats/pytest/test/all; `.DEFAULT_GOAL := help`;
+  self-documenting help parsed from `## ` comments; recipes wrap the exact commands CI already runs.
+- `tasks.ps1` — PowerShell mirror with identical target names; graceful skips for Windows-absent tools.
+- README `## Development` section; CI gained a `makefile` job (`make help` + `make -n all`).
+
+**What was tried / found**
+- `make` is not installed on the Windows dev box → the Makefile can't be run locally anywhere I control.
+  Solution: a CI `makefile` job on ubuntu-latest (make preinstalled) runs `make -n all` — real verification
+  that every target resolves and recipes expand. It passed.
+- First `tasks.ps1` draft used bare `pytest`/`ruff` and trusted `bash` — all three broke in PowerShell:
+  `pytest`/`ruff` shims aren't on the PS PATH, and Windows `bash` is a broken WSL stub
+  (`execvpe(/bin/bash) failed`). Rewrote to use `python -m pytest` / `python -m ruff` and to probe bash
+  *usability* (`bash -c 'exit 0'`), skipping with a warning when unusable. Re-ran: ruff pass, pytest 29 pass,
+  `lint`/`test` exit 0 while skipping shellcheck/bats/bad-bash.
+- Adversarial 3-lens verify (makefile / powershell-5.1 / parity) before push: Makefile + PS lenses clean;
+  parity lens caught one README comment that wrongly attributed shellcheck to the `test` target — fixed.
+
+**Verification**
+- Local: `tasks.ps1` ruff/pytest/lint/test all exit 0; Makefile recipe lines confirmed tab-indented; blob is LF.
+- CI: all 5 jobs green on `61dfc4e` — `shellcheck+bash -n`, `bats`, `makefile`, `py_compile+ruff`, `pytest`.
+
+**Commit style:** 4 small atomic commits (Makefile → tasks.ps1 → CI makefile job → README), plus lifecycle sync.
+
+---
+
 ## 2026-07-02 — Phase 2: Test suite (bats + pytest)
 
 **Goal:** Close the "no tests" open item with real, VM-free tests over the pure/observable surface, and
