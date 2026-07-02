@@ -57,22 +57,17 @@ Docs) is done; each phase landed as small atomic commits, pushed per phase.
 ## Open / not done (user steps — need a human + real hardware)
 - [ ] Record `docs/demo.cast` / `demo.gif` from a live terminal and embed the GIF in the README.
 - [ ] `ssh_toolkit` live-VM smoke test (needs a real two-VM lab).
-- [ ] Resolve the repo-name mismatch (`5-DevOps-Toolkit` remote vs `devops-toolkit-5` in docs) — see Needs review.
+- [x] Repo-name mismatch resolved — canonical name is `5-DevOps-Toolkit` (the remote); all docs aligned (D16).
 
 ## Next best action
 The 4-phase upgrade is complete. Remaining items all need a human:
 1. Record the demo GIF (`docs/DEMO.md`) and embed it in the README.
 2. Copy `config.example.toml` → `config.toml`, fill in host/user; run `./setup.sh all …` on a Linux VM.
-3. Decide the canonical repo name and align docs (see Needs review).
 
 ## Blockers / waiting on
 None.
 
 ## Needs review
-**Repo-name mismatch:** GitHub remote is `www8351/5-DevOps-Toolkit`, but README (clone URL, layout tree)
-and lifecycle files call the project `devops-toolkit-5`. Badges were fixed to the real slug; the clone URL
-and prose still say `devops-toolkit-5`. Decide the canonical name and align.
-
 Destructive/root scripts (`newuser.sh`, `mkswap.sh`, `pkg.sh`, `install-jenkins.sh`, `grant-sudo.sh`) were
 verified via `-h` and `DRY_RUN` only — they were **not** executed against a live system. Run them in a
 throwaway VM/WSL before relying on them.

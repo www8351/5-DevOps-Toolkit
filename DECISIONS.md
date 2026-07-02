@@ -157,3 +157,19 @@ history. A script is reviewable, testable, stays correct as tools change, and le
 **Rejected:** Committing a binary GIF (large, goes stale, unreviewable); fabricating/faking a recording
 (dishonest); skipping the demo entirely (loses the portfolio value).
 **Status:** Final. Recording + embedding the GIF is a documented user step.
+
+---
+
+### D16 — Canonical project name is `5-DevOps-Toolkit`
+**Decision:** The project is named `5-DevOps-Toolkit` everywhere — matching the GitHub remote
+(`github.com/www8351/5-DevOps-Toolkit`) and the working directory. All docs, badges, clone URLs, script
+headers and the layout tree were aligned to it (the earlier `devops-toolkit-5` spelling is retired).
+**Why:** The remote already exists under `5-DevOps-Toolkit`; renaming a live GitHub repo breaks every
+existing URL/clone/star and needs a manual GitHub action, whereas the `devops-toolkit-5` name only ever
+lived in prose. Aligning docs to the real slug is the lower-risk, reversible-in-docs choice.
+**Rejected:** Renaming the GitHub repo to `devops-toolkit-5` (disruptive, breaks links, needs a human on the
+GitHub side); leaving the mismatch (broken clone URL and badges — the reason this was flagged in the first
+place).
+**Note:** Historical `PROGRESS.md` entries that record the original `devops-toolkit-5` intent are left intact
+— they document *why* the mismatch existed.
+**Status:** Final. If the owner prefers `devops-toolkit-5`, rename the GitHub repo instead and re-align.
