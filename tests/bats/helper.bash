@@ -6,7 +6,8 @@
 # test invokes helpers inside a child `bash -c 'source ...; <call>'` so bats'
 # `run` stays intact and $status/$output remain meaningful.
 
-export REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+export REPO_ROOT
 export NO_COLOR=1   # common.sh -> empty colour palette -> exact, stable strings
 
 export COMMON="$REPO_ROOT/lib/common.sh"   # must be exported: child `bash -c` reads it
