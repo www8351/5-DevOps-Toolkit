@@ -150,6 +150,34 @@ Every script follows the same defensive contract:
 
 ---
 
+## 🛠️ Development
+
+Linters and tests mirror CI. Use **`make`** on Linux/WSL/macOS or **`tasks.ps1`** on Windows —
+identical target names. Install dev deps first: `pip install -r requirements-dev.txt`
+(shell tests also need `bats` and `shellcheck`, e.g. `sudo apt install bats shellcheck`).
+
+```bash
+# Linux / WSL / macOS
+make help          # list targets
+make lint          # bash -n + shellcheck + ruff
+make test          # bats + pytest
+make all           # lint + test
+```
+
+```powershell
+# Windows (PowerShell) — tools absent on Windows are skipped with a warning
+.\tasks.ps1 lint   # runs ruff; bash -n / shellcheck skipped on Windows (run in CI)
+.\tasks.ps1 test   # runs pytest; bats skipped on Windows (runs in CI)
+```
+
+| Target | Runs |
+|--------|------|
+| `lint` | `bash -n`, `shellcheck` (`-e SC1091`), `ruff` (real errors only) |
+| `test` | `bats tests/bats`, `pytest 04-network-ssh/tests` |
+| `all`  | `lint` then `test` |
+
+---
+
 <details>
 <summary><b>🧠 Skills demonstrated</b> (click to expand)</summary>
 
