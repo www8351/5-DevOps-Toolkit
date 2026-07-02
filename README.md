@@ -238,9 +238,14 @@ devops-toolkit-5/
 ├── 01-file-text-toolkit/      # dirsnap · logtop · bigfiles · txtstats · backup
 ├── 02-user-permissions/       # newuser · whohas · permfix · audit-perms · grant-sudo
 ├── 03-system-monitor/         # sysinfo · topproc · diskwatch · memwatch · mkswap
-├── 04-network-ssh/            # netinfo · pingsweep · httpcheck · portscan · sshkey
+├── 04-network-ssh/            # netinfo · pingsweep · httpcheck · portscan · sshkey · ssh_toolkit/ (py)
 ├── 05-docker-devops/          # pkg · docker-run-web · docker-clean · install-jenkins · ec2-deploy.py
-├── README.md                  # you are here
+├── tests/bats/                # bats tests for lib/common.sh + the -h contract
+├── docs/                      # demo.sh (read-only tour) · DEMO.md (recording guide)
+├── .github/workflows/         # shellcheck · bats · makefile · python · pytest CI
+├── Makefile  tasks.ps1        # dev task runner (Linux/WSL · Windows)
+├── requirements-dev.txt       # pytest + ruff
+├── README.md  CONTRIBUTING.md # you are here · how to contribute
 ├── STATUS.md  PROGRESS.md  DECISIONS.md  CLAUDE_MEMORY.md   # project lifecycle log
 ├── LICENSE                    # MIT
 └── .gitignore  .editorconfig
