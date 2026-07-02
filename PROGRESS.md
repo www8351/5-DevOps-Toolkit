@@ -4,6 +4,25 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-07-02 — README overhaul (Quality & CI + Roadmap) & name alignment
+
+**Goal:** Surface the hardening work in the README and give the repo a clear roadmap and cleaner design.
+
+**What was done**
+- New **🔬 Quality & CI** section: a 5-check table (shellcheck+bash -n, bats, pytest, py_compile+ruff,
+  makefile) with what each guarantees, the 53-test total, and links to the lifecycle log.
+- New **🗺️ Roadmap** section: shipped (✅) vs planned (⬜/💡), with a note that the 4-phase hardening
+  landed as per-phase commits.
+- Subtitle gained `53 tests · 5 green CI checks`; skills list gained *Testing & CI* and *Process discipline*.
+- Aligned the project name everywhere to the canonical `5-DevOps-Toolkit` (matches the remote) — see D16.
+
+**Verification**
+- Cross-checked every claimed number against the repo: `common.bats` 23 + `help_smoke.bats` 1 = **24 bats**;
+  **29 pytest**; **53** total; **5** CI jobs. Confirmed all linked files exist (DECISIONS/STATUS/PROGRESS/
+  CONTRIBUTING/docs). Deliberately did **not** embed a demo GIF that isn't recorded yet (roadmap item).
+
+---
+
 ## 2026-07-02 — Phase 4: Demos & docs polish (upgrade complete)
 
 **Goal:** Make the repo self-demonstrating and contributor-friendly, closing the 4-phase upgrade.
