@@ -31,15 +31,23 @@ GitHub as a public repo.
 - [x] README badges switched to live Actions status; badge repo slug fixed to real remote `5-DevOps-Toolkit`.
 - [x] Committed workspace `CLAUDE.md` (lifecycle protocol now tracked).
 
+## Done (added 2026-07-02) — Phase 2: Tests
+- [x] `tests/bats/common.bats` — 24 bats unit tests for `lib/common.sh` (child-shell pattern avoids `run()` clash).
+- [x] `tests/bats/help_smoke.bats` — `-h` contract smoke over all tool scripts (helpers excluded).
+- [x] `04-network-ssh/tests/test_utils.py` — 29 pytest cases for `ssh_toolkit.utils` (pure surface).
+- [x] `requirements-dev.txt` (`pytest`, `ruff`); bats + pytest jobs wired into CI — all 4 CI jobs green.
+- [x] Fixed `portscan.sh` + `sshkey.sh`: `-h` now works before `need_cmd` (help-before-deps contract).
+- [x] Verified via adversarial multi-agent review + real CI run (bats caught the `COMMON`-export blocker pre-merge).
+
 ## Open / not done
-- [ ] Unit tests (e.g. `bats` / `pytest`) — Phase 2 (in progress).
-- [ ] Asciinema demo GIFs in the README.
+- [ ] Asciinema demo GIFs in the README — Phase 4.
+- [ ] Makefile / task runner — Phase 3.
 - [ ] `ssh_toolkit` has not been smoke-tested against a live VM (needs a real two-VM lab).
 
 ## Next best action
-1. Copy `config.example.toml` → `config.toml`, fill in host/user.
-2. Run `./setup.sh all --host <IP> --user <USER>` on a Linux VM to verify the full flow.
-3. Add `.github/workflows/shellcheck.yml` to enforce the "ShellCheck-clean" badge.
+1. Phase 3: add `Makefile` (help/lint/test/all) + `tasks.ps1` Windows mirror.
+2. Copy `config.example.toml` → `config.toml`, fill in host/user; run `./setup.sh all …` on a Linux VM.
+3. Resolve the repo-name mismatch (see Needs review).
 
 ## Blockers / waiting on
 None.

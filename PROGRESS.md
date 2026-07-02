@@ -4,6 +4,43 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-07-02 — Phase 2: Test suite (bats + pytest)
+
+**Goal:** Close the "no tests" open item with real, VM-free tests over the pure/observable surface, and
+wire them into CI so the quality gate is enforced.
+
+**What was done**
+- `04-network-ssh/tests/test_utils.py` (29 cases) + `conftest.py` (sys.path shim) for `ssh_toolkit.utils`:
+  OS detection, path helpers, `RollbackStack` (LIFO + continue-on-error), `_from_env`, `load_toml`
+  (flatten / absent / no-parser / malformed), `resolve()` precedence ladder, `confirm()`. No paramiko/VM needed.
+- `tests/bats/common.bats` (24 tests) + `helper.bash` for `lib/common.sh`: logging tags, stderr routing,
+  `die`, `need_cmd`, `require_root`, `run` (exec / DRY_RUN / exit-code propagation), `confirm`
+  (ASSUME_YES + anchored y/N regex, uppercase, non-anchored reject), banner/hr, double-source guard.
+- `tests/bats/help_smoke.bats`: enforces the `-h`-works-before-deps contract across every tool script.
+- CI: added a `bats` job (apt bats) to the shellcheck workflow and a `pytest` job (py3.11) to the python one.
+
+**What was tried / found**
+- **Key design constraint:** `common.sh` defines a `run()` function that collides with bats' own `run`.
+  Solution: never source `common.sh` into the test shell — invoke helpers in a child `bash -c 'source…; …'`.
+- Ran an **adversarial 5-lens verification workflow** before pushing (bats couldn't run locally — no bats on
+  the Windows box). It caught a **blocker**: `helper.bash` set `COMMON` without `export`, so the child shell
+  never saw it → all 24 bats tests would have failed with status 127. Fixed before the first push.
+- Same review flagged `sshkey.sh` running `need_cmd ssh-keygen` before `-h` (like `portscan.sh` in Phase 1) —
+  a false-pass on CI (runner has the binary) but a contract violation. Both moved the guard after arg parsing.
+- Added coverage the critic found missing: `run` exit-code propagation, real stderr routing (redirect stdout
+  to /dev/null), `load_toml` no-parser + malformed branches.
+
+**Verification**
+- `pytest` 29/29 locally (py3.14); every bats assertion's underlying `bash -c` snippet simulated locally and
+  matched. **CI is authoritative:** first shellcheck run failed on `SC2155` in `helper.bash`
+  (`export X="$(...)"` masks return code) — split declare/assign, re-run **green**.
+- Final state: all 4 CI jobs pass on `5db0516` — `shellcheck+bash -n`, `bats`, `py_compile+ruff`, `pytest`.
+
+**Commit style:** 6 small atomic commits (contract fix → pytest → bats-common → bats-smoke → CI wiring →
+SC2155 fix), plus this lifecycle sync.
+
+---
+
 ## 2026-07-02 — Phase 1: Continuous Integration (GitHub Actions)
 
 **Goal:** Close the "no CI" open item and make the repo's quality bar enforced, not aspirational — so the

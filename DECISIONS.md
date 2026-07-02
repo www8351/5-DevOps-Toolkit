@@ -106,3 +106,26 @@ style, so CI stays a meaningful gate without failing on cosmetic nits that would
 **Rejected:** Full `ruff` default ruleset (too noisy for an existing codebase, would go red immediately);
 no CI (leaves the badge as an unverified claim).
 **Status:** Final; rules can tighten later once a baseline is clean.
+
+---
+
+### D12 — Test only the pure/observable surface; bats runs helpers in a child shell
+**Decision:** Tests cover `lib/common.sh` (bats) and `ssh_toolkit.utils` (pytest) — logging, guards, `run`,
+`confirm`, config precedence, `RollbackStack` — but **not** anything needing a live VM, AWS, or paramiko.
+bats tests never `source common.sh` directly; they call helpers inside `bash -c 'source …; …'`.
+**Why:** The VM/SSH/boto3 paths can't be validated without real infrastructure (see D9/D10) — testing them
+would mean heavy mocking of low value. The pure surface is where regressions actually hide and is trivially
+testable. The child-shell pattern is **required**, not stylistic: `common.sh` defines a `run()` that would
+otherwise clobber bats' own `run` builtin and break the harness.
+**Rejected:** Sourcing `common.sh` into the test shell (breaks bats `run`); mocking paramiko/boto3 for
+end-to-end tests (brittle, low ROI); no tests (leaves the quality bar unenforced).
+**Status:** Final. Live-VM/SFTP/network-rollback validation remains a manual step against a real two-VM lab.
+
+---
+
+### D13 — `-h`/usage must work before any dependency guard
+**Decision:** Every tool prints usage and exits 0 on `-h` **without** requiring its runtime binaries;
+`need_cmd` runs only after argument parsing. Enforced by `tests/bats/help_smoke.bats`.
+**Why:** Help that fails when a dependency is absent is useless exactly when a user is trying to learn how to
+install/use the tool. `portscan.sh` (Phase 1) and `sshkey.sh` (Phase 2) violated this and were fixed.
+**Status:** Final; new tools must satisfy the smoke test.
