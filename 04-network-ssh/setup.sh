@@ -16,7 +16,6 @@ REQ="${SCRIPT_DIR}/requirements.txt"
 PY=""
 for candidate in python3 python python3.12 python3.11 python3.10 python3.9 python3.8; do
   if command -v "$candidate" >/dev/null 2>&1; then
-    ver="$("$candidate" -c 'import sys; print(sys.version_info[:2])')"
     if "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)' 2>/dev/null; then
       PY="$candidate"
       break

@@ -15,7 +15,7 @@ banner "Name echo demo"
 printf '%s[?]%s Enter a name: ' "${_C_YEL:-}" "${_C_RESET:-}"
 read -r name
 
-for i in $(seq 1 "$ITERATIONS"); do
+for _ in $(seq 1 "$ITERATIONS"); do
   echo "$name $name $name"
 done
 

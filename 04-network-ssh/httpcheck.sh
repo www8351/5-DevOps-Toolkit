@@ -53,9 +53,10 @@ check_url() {
   local rtt_disp="-"
   [[ -n "$rtt" ]] && rtt_disp="$(printf '%ss' "$rtt")"
 
+  # "2xx/3xx" (the wget fallback marker) is already matched by 2*.
   case "$code" in
-    2*|3*|"2xx/3xx") c_ok  "$(printf '%-9s  %s' "$code" "$rtt_disp")"; return 0 ;;
-    *)               c_err "$(printf '%-9s  %s' "$code" "$rtt_disp")"; return 1 ;;
+    2*|3*) c_ok  "$(printf '%-9s  %s' "$code" "$rtt_disp")"; return 0 ;;
+    *)     c_err "$(printf '%-9s  %s' "$code" "$rtt_disp")"; return 1 ;;
   esac
 }
 
