@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧰 devops-toolkit-5
+# 🧰 5-DevOps-Toolkit
 
 ### `5 folders` · `24 single-purpose scripts` · `1 shared engine`
 
@@ -86,7 +86,7 @@ The point isn't the commands themselves — it's the **assembly**: how primitive
 
 ```mermaid
 graph TD
-    A["🧰 devops-toolkit-5"] --> L["📚 lib/common.sh<br/>(shared engine)"]
+    A["🧰 5-DevOps-Toolkit"] --> L["📚 lib/common.sh<br/>(shared engine)"]
     A --> F1["🗃️ 01 · file & text"]
     A --> F2["👤 02 · users & perms"]
     A --> F3["📊 03 · system monitor"]
@@ -114,8 +114,8 @@ library, 24 consumers — **DRY by design**, not copy-paste.
 
 ```bash
 # 1. clone
-git clone https://github.com/www8351/devops-toolkit-5.git
-cd devops-toolkit-5
+git clone https://github.com/www8351/5-DevOps-Toolkit.git
+cd 5-DevOps-Toolkit
 
 # 2. make the scripts executable (Linux / WSL / macOS)
 chmod +x lib/common.sh **/*.sh
@@ -232,7 +232,7 @@ make all           # lint + test
 ## 🌳 Repository layout
 
 ```
-devops-toolkit-5/
+5-DevOps-Toolkit/
 ├── lib/
 │   └── common.sh              # shared engine: logging, guards, run/confirm
 ├── 01-file-text-toolkit/      # dirsnap · logtop · bigfiles · txtstats · backup

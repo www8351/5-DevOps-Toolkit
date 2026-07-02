@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 usage() {
   cat <<EOF
-demo.sh — a safe, read-only tour of devops-toolkit-5 for demos/recordings
+demo.sh — a safe, read-only tour of 5-DevOps-Toolkit for demos/recordings
 
 Usage: $0 [-h]
 
@@ -47,7 +47,7 @@ main() {
     *) die "unexpected argument: $1 (try -h)" ;;
   esac
 
-  banner "devops-toolkit-5 — read-only demo"
+  banner "5-DevOps-Toolkit — read-only demo"
   c_info "every step below is safe: no root, no writes, no network changes"
   hr
 

@@ -171,7 +171,7 @@ publish it to a new public GitHub repo.
 - `bash -n` on every `.sh`; `shellcheck` where available; ran the read-only scripts and captured real output.
 
 **Outcome**
-- Pushed to GitHub: `https://github.com/www8351/devops-toolkit-5`.
+- Pushed to GitHub: `https://github.com/www8351/5-DevOps-Toolkit`.
 
 ---
 

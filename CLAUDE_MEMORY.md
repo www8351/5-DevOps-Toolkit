@@ -5,9 +5,9 @@ Long-term memory, core preferences and persistent rules for this project.
 ---
 
 ## Project identity
-- **Name:** `devops-toolkit-5` — a portfolio of small, single-purpose Linux/DevOps scripts built from the
+- **Name:** `5-DevOps-Toolkit` — a portfolio of small, single-purpose Linux/DevOps scripts built from the
   owner's hand-written command cheat-sheet.
-- **Owner / GitHub:** `www8351` · repo: `https://github.com/www8351/devops-toolkit-5` (public).
+- **Owner / GitHub:** `www8351` · repo: `https://github.com/www8351/5-DevOps-Toolkit` (public).
 - **Audience:** recruiters / engineers reading the repo as a skills showcase, plus the owner as a daily
   command reference.
 

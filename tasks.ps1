@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Windows task runner for devops-toolkit-5 — mirror of the Makefile.
+  Windows task runner for 5-DevOps-Toolkit — mirror of the Makefile.
 .DESCRIPTION
   Same target names as `make`. Python tools run via `python -m` (the launcher is
   more reliably on PATH than the pytest/ruff shims). Tools absent on Windows

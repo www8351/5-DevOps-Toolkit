@@ -1,4 +1,4 @@
-# Makefile — developer entrypoint for devops-toolkit-5 (mirrors CI).
+# Makefile — developer entrypoint for 5-DevOps-Toolkit (mirrors CI).
 #
 # Requires: bash, shellcheck, bats, python3 with ruff + pytest
 #   (pip install -r requirements-dev.txt).

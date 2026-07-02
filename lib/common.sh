@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────────
-# lib/common.sh — shared engine for devops-toolkit-5
+# lib/common.sh — shared engine for 5-DevOps-Toolkit
 #
 # Source it from any script (scripts live one level below repo root):
 #     source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"
