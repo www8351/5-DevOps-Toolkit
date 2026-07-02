@@ -1,0 +1,4 @@
+# Development / CI tooling — not required to run the toolkit itself.
+# bats (bash test harness) is installed via the OS package manager, not pip.
+pytest>=8.0
+ruff>=0.6
