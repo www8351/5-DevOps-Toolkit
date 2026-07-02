@@ -3,8 +3,11 @@
 _Last updated: 2026-07-02_
 
 ## Where the project stands
-**MVP complete.** A 5-module DevOps shell toolkit (`devops-toolkit-5`) is built, reviewed and pushed to
-GitHub as a public repo.
+**v1 complete + hardened.** A 5-module DevOps shell toolkit is built, tested and pushed to GitHub as a
+public repo. Now **CI-gated** (shellcheck + bats + pytest + Makefile-parse + ruff — all 5 jobs green),
+**tested** (24 bats + 29 pytest = 53), with a **task runner** (`make` / `tasks.ps1`) and **contributor docs**
+(`CONTRIBUTING.md`, `docs/demo.sh` + recording guide). The 4-phase upgrade (CI → Tests → Task runner →
+Docs) is done; each phase landed as small atomic commits, pushed per phase.
 
 ## Done
 - [x] `git init` on `main`, repo scaffolding (`.gitignore`, `.editorconfig`, `LICENSE` MIT).
@@ -45,14 +48,22 @@ GitHub as a public repo.
 - [x] CI `makefile` job (`make help` + `make -n all`) proves the Makefile parses/resolves — all 5 jobs green.
 - [x] README `## Development` section documents both runners.
 
-## Open / not done
-- [ ] Demo assets (asciinema/GIF) in the README — Phase 4 (recording needs a live terminal — user step).
-- [ ] `ssh_toolkit` has not been smoke-tested against a live VM (needs a real two-VM lab).
+## Done (added 2026-07-02) — Phase 4: Demos & docs
+- [x] `docs/demo.sh` — safe read-only tour of the tools (contract-compliant `-h`; steps tolerate missing deps).
+- [x] `docs/DEMO.md` — asciinema/agg recording instructions (recording is a user step — can't be automated).
+- [x] `CONTRIBUTING.md` — setup, checks, tool contract, add-a-tool checklist.
+- [x] README layout tree expanded (tests/docs/CI/task-runner); all 5 CI jobs still green.
+
+## Open / not done (user steps — need a human + real hardware)
+- [ ] Record `docs/demo.cast` / `demo.gif` from a live terminal and embed the GIF in the README.
+- [ ] `ssh_toolkit` live-VM smoke test (needs a real two-VM lab).
+- [ ] Resolve the repo-name mismatch (`5-DevOps-Toolkit` remote vs `devops-toolkit-5` in docs) — see Needs review.
 
 ## Next best action
-1. Phase 4: `docs/demo.sh` + `docs/DEMO.md` recording instructions + `CONTRIBUTING.md`.
+The 4-phase upgrade is complete. Remaining items all need a human:
+1. Record the demo GIF (`docs/DEMO.md`) and embed it in the README.
 2. Copy `config.example.toml` → `config.toml`, fill in host/user; run `./setup.sh all …` on a Linux VM.
-3. Resolve the repo-name mismatch (see Needs review).
+3. Decide the canonical repo name and align docs (see Needs review).
 
 ## Blockers / waiting on
 None.

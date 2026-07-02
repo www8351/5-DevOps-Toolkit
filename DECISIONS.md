@@ -145,3 +145,15 @@ the runner useless. Skipping-with-warning keeps it usable while CI remains the a
 Makefile + docs with no cross-check (drift — the CI `makefile` job guards against it); hard-failing on
 missing Windows tools (turns a convenience into a blocker).
 **Status:** Final.
+
+---
+
+### D15 — Ship a demo *script*, not a checked-in GIF
+**Decision:** The demo is `docs/demo.sh` (a real, read-only, re-runnable tour) plus `docs/DEMO.md` with the
+exact `asciinema` + `agg` commands. The `.cast`/`.gif` are generated locally by the user and are **not**
+committed. `demo.sh` follows the tool contract (`-h` before deps) so `help_smoke.bats` covers it.
+**Why:** A recording can't be produced in this environment (no live terminal), and a binary GIF bloats git
+history. A script is reviewable, testable, stays correct as tools change, and lets anyone regenerate the GIF.
+**Rejected:** Committing a binary GIF (large, goes stale, unreviewable); fabricating/faking a recording
+(dishonest); skipping the demo entirely (loses the portfolio value).
+**Status:** Final. Recording + embedding the GIF is a documented user step.

@@ -4,6 +4,39 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-07-02 — Phase 4: Demos & docs polish (upgrade complete)
+
+**Goal:** Make the repo self-demonstrating and contributor-friendly, closing the 4-phase upgrade.
+
+**What was done**
+- `docs/demo.sh` — a safe, read-only tour (sysinfo, dirsnap, txtstats, netinfo, httpcheck, topproc). Each
+  step runs through a `step()` wrapper that tolerates a missing dependency so the tour always completes.
+- `docs/DEMO.md` — exact `asciinema rec` + `agg` commands to turn the tour into a GIF.
+- `CONTRIBUTING.md` — setup, the `make`/`tasks.ps1` checks, the tool contract, an add-a-tool checklist.
+- README: expanded the repository-layout tree (tests/docs/CI/task-runner).
+
+**What was tried / found**
+- `docs/demo.sh` is a new `*.sh`, so `help_smoke.bats` auto-discovers it and runs `demo.sh -h`. Made it
+  contract-compliant (usage + `-h` exit 0 before any action) so the smoke test passes and even covers it.
+  Verified the tool flags it calls (`dirsnap -n`, `txtstats FILE`, `topproc -n`, `httpcheck <url>`) all exist.
+- A GIF/asciinema cast **cannot be produced here** — recording needs a live terminal. Shipped the script +
+  instructions and said so plainly; the `.cast`/`.gif` are generate-locally, not committed (D15).
+- 2-lens verify before push (demo.sh shellcheck/contract clean; docs lens caught a DEMO.md self-contradiction
+  about committing the `.cast` — fixed).
+
+**Verification**
+- `demo.sh -h` exits 0 and names itself; `bash -n` clean; blob is LF.
+- CI: all 5 jobs green on `66f8c0f` — including shellcheck + `help_smoke` now exercising `demo.sh`.
+
+**Upgrade summary (4 phases, all pushed per phase):** CI (shellcheck+python) → Tests (24 bats + 29 pytest,
+wired to CI) → Task runner (`make` + `tasks.ps1`, CI-verified) → Demos & docs. Each phase used small atomic
+commits and an adversarial multi-agent verify pass; those passes caught a bats blocker, two `-h`-contract
+bugs, and several doc/portability issues before they hit `main`.
+
+**Commit style:** 4 small atomic commits (demo.sh → DEMO.md → CONTRIBUTING → README), plus this final sync.
+
+---
+
 ## 2026-07-02 — Phase 3: Task runner (Makefile + tasks.ps1)
 
 **Goal:** One entrypoint for lint/test, usable on Linux/WSL/macOS (`make`) and the owner's Windows box
