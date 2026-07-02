@@ -35,8 +35,6 @@ EOF
 }
 
 main() {
-  need_cmd nmap
-
   local ports=""
   local discover=0
   local target=""
@@ -60,6 +58,9 @@ main() {
   done
 
   [[ -n "$target" ]] || die "target is required (host or CIDR; try -h)"
+
+  # Dependency guard after arg parsing so -h/usage work without nmap installed.
+  need_cmd nmap
 
   # Reiterate the warning at run time so it is impossible to miss.
   c_warn "AUTHORIZATION: only scan hosts you own or are permitted to test."

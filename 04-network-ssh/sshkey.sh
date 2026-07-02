@@ -27,8 +27,6 @@ EOF
 }
 
 main() {
-  need_cmd ssh-keygen
-
   local keyfile="${HOME}/.ssh/id_ed25519"
   local comment=""
   local copy_target=""
@@ -55,6 +53,9 @@ main() {
       *) die "unexpected argument: $1 (try -h)" ;;
     esac
   done
+
+  # Dependency guard after arg parsing so -h/usage work without ssh-keygen installed.
+  need_cmd ssh-keygen
 
   if [[ -z "$comment" ]]; then
     local user host
