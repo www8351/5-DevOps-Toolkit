@@ -18,12 +18,17 @@ git log reads like a progress timeline (small atomic commits, pushed per phase).
 - Committed the previously-untracked workspace `CLAUDE.md`.
 
 **What was tried / found**
-- `py_compile` verified locally against all `.py` before pushing the workflow → CI should be green.
+- `py_compile` verified locally against all `.py` before pushing → python workflow passed first try.
+- First **shellcheck run failed** (4 warnings): `setup.sh` SC2034 (`ver` unused), `name_echo.sh` SC2034
+  (`i` unused), `httpcheck.sh` SC2221/SC2222 (dead `case` alt — `2*` already matches the `"2xx/3xx"` marker).
+  Fixed all three in a follow-up commit; **re-run is green**. The "ShellCheck-clean" badge is now earned, not claimed.
 - Discovered the GitHub remote is `5-DevOps-Toolkit` while docs say `devops-toolkit-5`; fixed badge slugs to
   the real remote and logged the wider naming mismatch under STATUS "Needs review".
-- shellcheck is not installed on the Windows dev box → shell linting is delegated to CI.
+- shellcheck is not installed on the Windows dev box → shell linting is delegated to CI (which is exactly why
+  CI caught what local checks couldn't).
 
-**Commit style:** 5 small atomic commits (track CLAUDE.md → shellcheck wf → python wf → badges → this sync).
+**Commit style:** 6 small atomic commits (track CLAUDE.md → shellcheck wf → python wf → badges → lifecycle sync
+→ shellcheck fix). Both workflows green on `bcecaeb`.
 
 ---
 
