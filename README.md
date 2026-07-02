@@ -2,7 +2,7 @@
 
 # 🧰 5-DevOps-Toolkit
 
-### `5 folders` · `24 single-purpose scripts` · `1 shared engine`
+### `5 folders` · `24 single-purpose scripts` · `1 shared engine` · `53 tests` · `5 green CI checks`
 
 **Turning a raw Linux command cheat-sheet into a working, guarded DevOps toolkit.**
 *הופך רשימת פקודות לינוקס גולמית לערכת כלים אמיתית, מסודרת ומוגנת.*
@@ -150,6 +150,25 @@ Every script follows the same defensive contract:
 
 ---
 
+## 🔬 Quality & CI
+
+This isn't a script dump — it's an engineered repo. Every push and pull request runs **5 CI checks**;
+a green tick means the whole toolkit is clean.
+
+| Check | What it guarantees |
+|-------|--------------------|
+| **shellcheck + `bash -n`** | every `*.sh` is syntax-clean and shellcheck-clean (`-e SC1091`) |
+| **bats** | 24 unit tests over `lib/common.sh` + the *“`-h` works before dependency checks”* contract |
+| **pytest** | 29 tests over `ssh_toolkit.utils` — OS detection, config precedence, rollback stack |
+| **py_compile + ruff** | the Python compiles and passes real-error lint |
+| **makefile** | the `Makefile` parses and every target resolves (`make -n all`) |
+
+**53 tests total, all VM-free.** The engineering process is documented in the lifecycle log:
+decisions and their rationale in [`DECISIONS.md`](DECISIONS.md), current state in [`STATUS.md`](STATUS.md),
+and a dated history in [`PROGRESS.md`](PROGRESS.md).
+
+---
+
 ## 🛠️ Development
 
 Linters and tests mirror CI. Use **`make`** on Linux/WSL/macOS or **`tasks.ps1`** on Windows —
@@ -178,6 +197,30 @@ make all           # lint + test
 
 ---
 
+## 🗺️ Roadmap
+
+**Shipped**
+
+- ✅ 24 guarded tools across 5 modules on one shared engine (`lib/common.sh`)
+- ✅ `ssh_toolkit` — cross-platform (Windows / macOS / Linux) Python SSH automation
+- ✅ Bilingual (HE / EN) documentation, published to GitHub
+- ✅ **CI** — shellcheck + bats + pytest + ruff + Makefile-parse on every push & PR
+- ✅ **53 tests** (24 bats + 29 pytest), all VM-free
+- ✅ **Task runner** — `make` (Linux / WSL / macOS) and `tasks.ps1` (Windows), same targets
+- ✅ Contributor docs — [`CONTRIBUTING.md`](CONTRIBUTING.md), plus a read-only demo tour ([`docs/demo.sh`](docs/demo.sh))
+
+**Planned**
+
+- ⬜ Record the demo GIF ([`docs/DEMO.md`](docs/DEMO.md)) and embed it under the badges
+- ⬜ Validate `ssh_toolkit` end-to-end against a live two-VM lab
+- 💡 Widen bats coverage to the module scripts; tighten the `ruff` ruleset once a baseline is clean
+- 💡 Add `bats` / `pytest` status badges when a coverage step lands
+
+> The 4-phase hardening (CI → tests → task runner → docs) landed as small, per-phase commits — the
+> `git log` reads like a progress timeline on purpose.
+
+---
+
 <details>
 <summary><b>🧠 Skills demonstrated</b> (click to expand)</summary>
 
@@ -190,6 +233,8 @@ make all           # lint + test
 - **Networking** — interface & route inspection, host sweeps, endpoint health, port scanning, SSH keys.
 - **Containers & cloud** — distro-agnostic package wrapper, Docker run/clean, Jenkins install, boto3 EC2.
 - **Software engineering** — a shared library, consistent CLIs, guards, dry-run, and shellcheck hygiene.
+- **Testing & CI** — bats + pytest (53 cases), GitHub Actions on every push, a Makefile/PowerShell task runner.
+- **Process discipline** — a maintained decision log and status/progress files; each change lands as a small, reviewable commit.
 
 </details>
 
