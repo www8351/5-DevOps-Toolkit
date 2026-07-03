@@ -1,6 +1,7 @@
-# File & Text Plumbing
+# 🗃️ File & Text Plumbing
 
 Small, sharp shell utilities for navigating, inspecting, slicing, and archiving files and text streams.
+*כלי shell קטנים וחדים לניווט, בדיקה, חיתוך וארכוב של קבצים וזרימות טקסט.*
 
 All scripts source the shared `lib/common.sh` for coloured logging, safe command execution, and prompts.
 

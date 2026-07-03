@@ -1,6 +1,8 @@
-# Networking & SSH
+# 🌐 Networking & SSH
 
 Small, focused shell tools to inspect interfaces, sweep hosts, check endpoints and manage SSH keys.
+*כלי shell ממוקדים לבדיקת ממשקי רשת, סריקת מארחים, בדיקת endpoints וניהול מפתחות SSH.*
+
 For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit--cross-platform-vm-to-vm-automation)** below.
 
 | Script | What it does | Key commands | Needs root |

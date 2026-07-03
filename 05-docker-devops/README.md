@@ -1,6 +1,7 @@
-# Docker, Packages & Cloud
+# 🐳 Docker, Packages & Cloud
 
 Small, focused scripts for wrapping package managers, running and cleaning Docker containers, installing Jenkins, and deploying an EC2 instance.
+*סקריפטים ממוקדים לעטיפת מנהלי חבילות, הרצה וניקוי קונטיינרים, התקנת Jenkins, והקמת מופע EC2.*
 
 ## Scripts
 

@@ -1,6 +1,7 @@
-# System & Hardware Monitor
+# 📊 System & Hardware Monitor
 
 One-glance dashboards for host, CPU, memory, disk and swap — small, focused Bash tools built on a shared helper library.
+*דשבורדים במבט אחד למארח, מעבד, זיכרון, דיסק ו-swap — כלי Bash ממוקדים על ספריית עזר משותפת.*
 
 ## Scripts
 

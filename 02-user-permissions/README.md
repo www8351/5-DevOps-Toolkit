@@ -1,6 +1,7 @@
-# Users, Groups & Permissions
+# 👤 Users, Groups & Permissions
 
 Small, focused Bash tools to create users, inspect identities, and audit or repair filesystem ownership and mode bits.
+*כלי Bash ממוקדים ליצירת משתמשים, בדיקת זהויות, וביקורת/תיקון בעלות והרשאות קבצים.*
 
 ## Scripts
 
