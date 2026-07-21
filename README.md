@@ -42,7 +42,7 @@ Instead of one giant script, the commands are composed into **24 focused tools**
 folders**. Every tool does *one* thing well, sources a **shared engine** (`lib/common.sh`), and ships with
 help text, dependency checks and safety guards.
 
-The point isn't the commands themselves — it's the **assembly**: how primitives like `find`, `awk`, `du`,
+The point isn't the commands themselves it's the **assembly**: how primitives like `find`, `awk`, `du`,
 `docker` and `nmap` are wired into reliable, reusable tools.
 
 </td>
@@ -59,7 +59,7 @@ The point isn't the commands themselves — it's the **assembly**: how primitive
 עושה *דבר אחד* טוב, טוען **מנוע משותף** (`lib/common.sh`), ומגיע עם מסך עזרה, בדיקות תלויות ומנגנוני
 הגנה.
 
-העיקר הוא לא הפקודות עצמן — אלא **ההרכבה**: איך אבני בניין כמו `find`, `awk`, `du`, `docker` ו-`nmap`
+העיקר הוא לא הפקודות עצמן אלא **ההרכבה**: איך אבני בניין כמו `find`, `awk`, `du`, `docker` ו-`nmap`
 מחוברות לכלים אמינים שאפשר לעשות בהם שימוש חוזר.
 
 </div>
@@ -104,9 +104,9 @@ graph TD
     L --> H3["run (DRY_RUN aware) · banner · hr"]
 ```
 
-Every script `source`s **`lib/common.sh`** — a single shared engine that provides coloured logging,
+Every script `source`s **`lib/common.sh`** a single shared engine that provides coloured logging,
 `confirm` prompts, `require_root` / `need_cmd` guards and a `run` wrapper that honours `DRY_RUN=1`. One
-library, 24 consumers — **DRY by design**, not copy-paste.
+library, 24 consumers **DRY by design**, not copy-paste.
 
 ---
 
@@ -152,14 +152,14 @@ Every script follows the same defensive contract:
 
 ## 🔬 Quality & CI
 
-This isn't a script dump — it's an engineered repo. Every push and pull request runs **5 CI checks**;
+This isn't a script dump it's an engineered repo. Every push and pull request runs **5 CI checks**;
 a green tick means the whole toolkit is clean.
 
 | Check | What it guarantees |
 |-------|--------------------|
 | **shellcheck + `bash -n`** | every `*.sh` is syntax-clean and shellcheck-clean (`-e SC1091`) |
 | **bats** | 24 unit tests over `lib/common.sh` + the *“`-h` works before dependency checks”* contract |
-| **pytest** | 29 tests over `ssh_toolkit.utils` — OS detection, config precedence, rollback stack |
+| **pytest** | 29 tests over `ssh_toolkit.utils` OS detection, config precedence, rollback stack |
 | **py_compile + ruff** | the Python compiles and passes real-error lint |
 | **makefile** | the `Makefile` parses and every target resolves (`make -n all`) |
 
@@ -202,12 +202,12 @@ make all           # lint + test
 **Shipped**
 
 - ✅ 24 guarded tools across 5 modules on one shared engine (`lib/common.sh`)
-- ✅ `ssh_toolkit` — cross-platform (Windows / macOS / Linux) Python SSH automation
+- ✅ `ssh_toolkit` cross-platform (Windows / macOS / Linux) Python SSH automation
 - ✅ Bilingual (HE / EN) documentation, published to GitHub
-- ✅ **CI** — shellcheck + bats + pytest + ruff + Makefile-parse on every push & PR
+- ✅ **CI** shellcheck + bats + pytest + ruff + Makefile-parse on every push & PR
 - ✅ **53 tests** (24 bats + 29 pytest), all VM-free
 - ✅ **Task runner** — `make` (Linux / WSL / macOS) and `tasks.ps1` (Windows), same targets
-- ✅ Contributor docs — [`CONTRIBUTING.md`](CONTRIBUTING.md), plus a read-only demo tour ([`docs/demo.sh`](docs/demo.sh))
+- ✅ Contributor docs [`CONTRIBUTING.md`](CONTRIBUTING.md), plus a read-only demo tour ([`docs/demo.sh`](docs/demo.sh))
 
 **Planned**
 
@@ -228,13 +228,13 @@ make all           # lint + test
 
 - **Text processing pipelines** — `grep | awk | sort | uniq | cut | wc` composition.
 - **Filesystem reasoning** — `find` by type/size/permission, `du` rollups, `tar` archiving.
-- **Linux administration** — users, groups, ownership, mode bits, swap, services.
-- **Observability** — CPU / memory / disk dashboards and threshold alerts with cron-friendly exit codes.
-- **Networking** — interface & route inspection, host sweeps, endpoint health, port scanning, SSH keys.
-- **Containers & cloud** — distro-agnostic package wrapper, Docker run/clean, Jenkins install, boto3 EC2.
-- **Software engineering** — a shared library, consistent CLIs, guards, dry-run, and shellcheck hygiene.
-- **Testing & CI** — bats + pytest (53 cases), GitHub Actions on every push, a Makefile/PowerShell task runner.
-- **Process discipline** — a maintained decision log and status/progress files; each change lands as a small, reviewable commit.
+- **Linux administration** users, groups, ownership, mode bits, swap, services.
+- **Observability** CPU / memory / disk dashboards and threshold alerts with cron-friendly exit codes.
+- **Networking** interface & route inspection, host sweeps, endpoint health, port scanning, SSH keys.
+- **Containers & cloud** distro-agnostic package wrapper, Docker run/clean, Jenkins install, boto3 EC2.
+- **Software engineering** a shared library, consistent CLIs, guards, dry-run, and shellcheck hygiene.
+- **Testing & CI** bats + pytest (53 cases), GitHub Actions on every push, a Makefile/PowerShell task runner.
+- **Process discipline** a maintained decision log and status/progress files; each change lands as a small, reviewable commit.
 
 </details>
 
