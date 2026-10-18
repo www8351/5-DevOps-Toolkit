@@ -36,7 +36,8 @@ sudo ./grant-sudo.sh -u alice
 
 - Every script supports `-h` / `--help`.
 - Destructive scripts (`newuser.sh`, `permfix.sh`, `grant-sudo.sh`) honour:
-  - `DRY_RUN=1` — print the commands instead of running them.
-  - `ASSUME_YES=1` — skip the interactive confirmation prompt.
+  - `DRY_RUN=1`: print the commands instead of running them. Works without root, so a
+    normal user can preview `newuser.sh` and `grant-sudo.sh`.
+  - `ASSUME_YES=1`: skip the interactive confirmation prompt.
 - `permfix.sh` is **dry-run by default**; pass `--execute` to actually apply changes.
 - All scripts source the shared helpers in `../lib/common.sh`.

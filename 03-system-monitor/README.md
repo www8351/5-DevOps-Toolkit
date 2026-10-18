@@ -1,7 +1,7 @@
 # 📊 System & Hardware Monitor
 
-One-glance dashboards for host, CPU, memory, disk and swap — small, focused Bash tools built on a shared helper library.
-*דשבורדים במבט אחד למארח, מעבד, זיכרון, דיסק ו-swap — כלי Bash ממוקדים על ספריית עזר משותפת.*
+One-glance dashboards for host, CPU, memory, disk and swap: small, focused Bash tools built on a shared helper library.
+*דשבורדים במבט אחד למארח, מעבד, זיכרון, דיסק ו-swap. כלי Bash ממוקדים על ספריית עזר משותפת.*
 
 ## Scripts
 
@@ -45,7 +45,7 @@ sudo ./mkswap.sh -s 2G --persist
 - Every script supports `-h` / `--help`.
 - Read-only scripts (`sysinfo.sh`, `topproc.sh`, `diskwatch.sh`, `memwatch.sh`) never mutate the system and never require root.
 - The destructive script (`mkswap.sh`) requires root, prompts for confirmation, and honours:
-  - `DRY_RUN=1` — print the mutating commands instead of executing them.
-  - `ASSUME_YES=1` — skip the confirmation prompt (intended for CI).
+  - `DRY_RUN=1`: print the mutating commands instead of executing them. Works without root.
+  - `ASSUME_YES=1`: skip the confirmation prompt (intended for CI).
 - Optional tools that are missing are reported via a warning and skipped, rather than crashing the script.
 - All scripts source the shared `lib/common.sh` helper library for logging, guards and presentation.

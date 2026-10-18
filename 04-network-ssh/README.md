@@ -3,16 +3,16 @@
 Small, focused shell tools to inspect interfaces, sweep hosts, check endpoints and manage SSH keys.
 *כלי shell ממוקדים לבדיקת ממשקי רשת, סריקת מארחים, בדיקת endpoints וניהול מפתחות SSH.*
 
-For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit--cross-platform-vm-to-vm-automation)** below.
+For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit-cross-platform-vm-to-vm-automation)** below.
 
 | Script | What it does | Key commands | Needs root |
 | --- | --- | --- | --- |
 | `netinfo.sh` | Show interfaces, routes, default gateway and listening ports | `ip addr`, `ip route`, `ss -tlnp`, `netstat` | No |
 | `pingsweep.sh` | Ping a list of hosts and print an up/down table | `ping -c1 -W1` | No |
-| `httpcheck.sh` | Check HTTP status code and response time for one or more URLs | `curl -o /dev/null -w`, `wget` | No |
+| `httpcheck.sh` | Check HTTP status code and response time for one or more URLs (exit 1 if any fails) | `curl -o /dev/null -w`, `wget` | No |
 | `portscan.sh` | Discover live hosts on a subnet and scan open ports | `nmap -sn`, `nmap -Pn -sV` | No |
 | `sshkey.sh` | Generate an ed25519 SSH keypair and optionally copy it to a host | `ssh-keygen -t ed25519`, `ssh-copy-id` | No |
-| `name_echo.sh` | Interactive name-echo demo — prompts for a name and prints it N×3 | `read`, `seq` | No |
+| `name_echo.sh` | Interactive name-echo demo: prompts for a name and prints it N×3 | `read`, `seq` | No |
 
 ## Usage
 
@@ -44,9 +44,9 @@ For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit--cross-pla
 
 ---
 
-## `ssh_toolkit` — Cross-Platform VM-to-VM Automation
+## `ssh_toolkit`: Cross-Platform VM-to-VM Automation
 
-A **Python 3.10+ package** that automates the full two-VM SSH lab workflow on **Windows, macOS, and Linux** — no hardcoded usernames or IPs.
+A **Python 3.10+ package** that automates the full two-VM SSH lab workflow on **Windows, macOS, and Linux**, with no hardcoded usernames or IPs.
 
 Replaces this manual sequence:
 
@@ -78,8 +78,8 @@ python -m ssh_toolkit all --host 193.168.1.1 --user refael
 
 | Subcommand | What it does |
 |------------|--------------|
-| `keys` | Generate ed25519 keypair (idempotent — skips if key already exists) |
-| `authorize` | Copy public key to remote host — portable `ssh-copy-id` for Windows too |
+| `keys` | Generate ed25519 keypair (idempotent: skips if key already exists) |
+| `authorize` | Copy public key to remote host: portable `ssh-copy-id` for Windows too |
 | `connect` | Test key-based SSH connectivity |
 | `transfer` | Push a local file to the remote host via SFTP / `scp` |
 | `demo` | Run remote `mkdir`/`touch`/`tar` demo; captures stdout+stderr locally |
