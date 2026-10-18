@@ -24,13 +24,24 @@ Options:
 
 Notes:
   Read-only. No root required.
+
+Exit status: 0 on success, 1 if USER does not exist, 2 on a usage error.
 EOF
 }
 
 main() {
-  case "${1:-}" in
-    -h|--help) usage; exit 0 ;;
-  esac
+  help_requested "$@" && { usage; exit 0; }
+
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+  [[ "${#args[@]}" -le 1 ]] || usage_error "expected at most one USER (got ${#args[@]} arguments)"
+  set -- "${args[@]}"
 
   need_cmd id
   need_cmd awk

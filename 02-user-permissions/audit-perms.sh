@@ -20,12 +20,15 @@ Arguments:
   PATH           directory to scan (default: /)
 
 Options:
-  -n LIMIT       cap results shown per category (default: 50)
+  -n, --limit N  cap results shown per category (default: 50, 0 = counts only)
   -h, --help     show this help and exit
 
 Notes:
   Read-only. No root required, but running as root surfaces more files
   (it can traverse directories an unprivileged user cannot).
+
+Exit status: 0 after a completed scan (findings are a report, not a failure),
+1 if PATH is not a directory, 2 on a usage error.
 EOF
 }
 
@@ -54,31 +57,22 @@ scan() {
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
+
   LIMIT=50
-  SCAN_PATH="/"
-
-  # getopts rejects a long option, so catch --help before it runs.
-  [[ "${1:-}" == "--help" ]] && { usage; exit 0; }
-
-  local opt
-  while getopts ":n:h" opt; do
-    case "$opt" in
-      n) LIMIT="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG" ;;
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--limit) need_arg "$@"; LIMIT="$2"; shift 2 ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  shift $((OPTIND - 1))
 
-  # Long help after getopts (e.g. `audit-perms.sh --help`).
-  case "${1:-}" in
-    -h|--help) usage; exit 0 ;;
-  esac
-
-  [[ -n "${1:-}" ]] && SCAN_PATH="$1"
-
-  [[ "$LIMIT" =~ ^[0-9]+$ ]] || die "-n LIMIT must be a non-negative integer"
+  [[ "${#args[@]}" -le 1 ]] || usage_error "expected at most one PATH (got ${#args[@]} arguments)"
+  [[ "$LIMIT" =~ ^[0-9]+$ ]] || usage_error "--limit must be a non-negative integer (got '$LIMIT')"
+  SCAN_PATH="${args[0]:-/}"
   [[ -d "$SCAN_PATH" ]] || die "not a directory: $SCAN_PATH"
 
   need_cmd find
