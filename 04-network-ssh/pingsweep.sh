@@ -19,8 +19,8 @@ Usage: $0 <host> [host...]
        $0 -f <file>
 
 Options:
-  -f FILE        read hosts from FILE (one host per line, # comments ok)
-  -h, --help     show this help and exit
+  -f, --file FILE  read hosts from FILE (one host per line, # comments ok)
+  -h, --help       show this help and exit
 
 Each host is pinged once (ping -c1 -W1). Read-only.
 EOF
@@ -42,15 +42,12 @@ main() {
   local -a hosts=()
   local file=""
 
+  help_requested "$@" && { usage; exit 0; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help) usage; exit 0 ;;
-      -f)
-        [[ $# -ge 2 ]] || die "-f requires a FILE argument"
-        file="$2"
-        shift 2
-        ;;
-      -*) die "unknown option: $1 (try -h)" ;;
+      -f|--file) need_arg "$@"; file="$2"; shift 2 ;;
+      --) shift; hosts+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
       *) hosts+=("$1"); shift ;;
     esac
   done
@@ -65,7 +62,7 @@ main() {
     done <"$file"
   fi
 
-  [[ "${#hosts[@]}" -gt 0 ]] || die "no hosts given (provide host... or -f FILE)"
+  [[ "${#hosts[@]}" -gt 0 ]] || usage_error "no hosts given (provide host... or -f FILE)"
 
   # Checked after parsing so -h works without ping installed.
   need_cmd ping

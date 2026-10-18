@@ -17,13 +17,13 @@ httpcheck.sh — check HTTP status code and response time for one or more URLs
 Usage: $0 [-t TIMEOUT] <url> [url...]
 
 Options:
-  -t TIMEOUT     per-request timeout in seconds (default 10)
-  -h, --help     show this help and exit
+  -t, --timeout SECS  per-request timeout in seconds (default 10)
+  -h, --help          show this help and exit
 
 Uses curl when available, otherwise falls back to wget --spider. Read-only.
 
-Exit status is 0 when every URL answers 2xx/3xx and 1 otherwise, so the
-script works as a cron or CI health check.
+Exit status: 0 when every URL answers 2xx/3xx, 1 otherwise (so the script
+works as a cron or CI health check), 2 on a usage error.
 EOF
 }
 
@@ -67,21 +67,18 @@ main() {
   local timeout=10
   local -a urls=()
 
+  help_requested "$@" && { usage; exit 0; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help) usage; exit 0 ;;
-      -t)
-        [[ $# -ge 2 ]] || die "-t requires a TIMEOUT argument"
-        timeout="$2"
-        [[ "$timeout" =~ ^[0-9]+$ ]] || die "timeout must be a positive integer: $timeout"
-        shift 2
-        ;;
-      -*) die "unknown option: $1 (try -h)" ;;
+      -t|--timeout) need_arg "$@"; timeout="$2"; shift 2 ;;
+      --) shift; urls+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
       *) urls+=("$1"); shift ;;
     esac
   done
 
-  [[ "${#urls[@]}" -gt 0 ]] || die "no URLs given (provide url... ; try -h)"
+  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || usage_error "--timeout must be a positive integer (got '$timeout')"
+  [[ "${#urls[@]}" -gt 0 ]] || usage_error "no URLs given (provide url...)"
 
   if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     die "need curl or wget on PATH"

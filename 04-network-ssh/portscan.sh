@@ -20,9 +20,12 @@ Arguments:
   target         host or CIDR to scan (e.g. 192.168.1.10 or 192.168.1.0/24)
 
 Options:
-  -p PORTS       ports to scan, e.g. 22,80,443 or 1-1000 (default: nmap default set)
-  --discover     host discovery only (nmap -sn), no port scan
-  -h, --help     show this help and exit
+  -p, --ports PORTS  ports to scan, e.g. 22,80,443 or 1-1000 (default: nmap's set)
+  --discover         host discovery only (nmap -sn), no port scan
+  -h, --help         show this help and exit
+
+Exit status: nmap's own status after a scan, 1 if nmap is missing, 2 on a
+usage error.
 
 !! AUTHORIZATION WARNING !!
   Port scanning systems you do not own or lack explicit written permission to
@@ -39,25 +42,21 @@ main() {
   local discover=0
   local target=""
 
+  help_requested "$@" && { usage; exit 0; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help) usage; exit 0 ;;
       --discover) discover=1; shift ;;
-      -p)
-        [[ $# -ge 2 ]] || die "-p requires a PORTS argument"
-        ports="$2"
-        shift 2
-        ;;
-      -*) die "unknown option: $1 (try -h)" ;;
+      -p|--ports) need_arg "$@"; ports="$2"; shift 2 ;;
+      -*) usage_error "unknown option: $1" ;;
       *)
-        [[ -z "$target" ]] || die "only one target allowed (got extra: $1)"
+        [[ -z "$target" ]] || usage_error "only one target allowed (got extra: $1)"
         target="$1"
         shift
         ;;
     esac
   done
 
-  [[ -n "$target" ]] || die "target is required (host or CIDR; try -h)"
+  [[ -n "$target" ]] || usage_error "target is required (host or CIDR)"
 
   # Dependency guard after arg parsing so -h/usage work without nmap installed.
   need_cmd nmap

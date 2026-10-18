@@ -33,7 +33,7 @@ For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit-cross-plat
 
 # Generate a key and copy it to a server (Linux / macOS)
 ./sshkey.sh -C "me@laptop"
-./sshkey.sh -c deploy@server.example.com
+./sshkey.sh --copy-to deploy@server.example.com
 
 # Name-echo demo (run 3 iterations instead of the default 2)
 ./name_echo.sh 3
