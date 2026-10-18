@@ -4,6 +4,34 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18: Phase 9, docs polish (wave complete)
+
+**Goal:** Every claim in the docs matches the repo, in the house style.
+
+**What was done**
+- README: recounted every number from the repo (74 bats + 103 pytest = 177 tests; 6 CI jobs with the
+  pytest matrix; 25 tools); rewrote the Quality & CI table, Development targets, roadmap (shipped vs
+  planned) and layout tree; safety model gained the non-root dry run, the `sudo DRY_RUN=1` order, the
+  health-check exit codes and the Python prompts, linking `SECURITY.md`; release and Python 3.10+ badges.
+- Removed em dash separators across README, CONTRIBUTING, DEMO and module READMEs (Hebrew lines included).
+  An earlier manual dash removal had left sentences without punctuation ("themselves it's", "lib/common.sh
+  a single shared engine", the skills list); repaired. The layout tree no longer names `CLAUDE_MEMORY.md`.
+- Module READMEs: httpcheck exit code, docker-clean daemon check, non-root dry run, fixed the
+  `ssh_toolkit` anchor after its heading changed. CONTRIBUTING: add-a-tool checklist now covers the exec
+  bit, behaviour tests with `stub`, and a CHANGELOG line.
+- `CLAUDE_MEMORY.md`: stack (Python 3.10+, pinned tools), the pipefail and dry-run rules learned in this
+  wave, test and release conventions, docs style.
+
+**Wave summary (Phases 5 to 9, all on PR #3)**
+Fix first, then showcase. 24 bats + 29 pytest became 74 + 103; the tests forced about twenty real fixes
+(two safety bugs in `mkswap.sh`, a `--dry-run` that did not stop `net --apply`, remote command injection,
+host keys accepted blindly, tools dying silently under pipefail, health checks exiting 0). CI pinned and
+matrixed, releases tag-driven. Owner steps: merge, tag `v1.0.0`, enable private vulnerability reporting,
+record the demo, run the live-VM checks.
+
+**Verification**
+- `make all` clean; bats clean as `nobody`; CI green on all 6 jobs for the Phase 8 head before this entry.
+
 ## 2026-10-18: Phase 8, repo hygiene and release
 
 **Goal:** The signals of a maintained project: pinned dependencies, a version, a changelog, a release path.

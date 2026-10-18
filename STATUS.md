@@ -5,9 +5,10 @@ _Last updated: 2026-10-18_
 ## Where the project stands
 **2026-10-18: portfolio polish wave in progress (Phases 5 to 9).** The plan fixes what a reviewer
 would hit in the first five minutes, then hardens the Python, widens the tests, adds release
-hygiene and polishes the docs. **Phases 5 to 8 are done** on branch `ccr-dec6d5a6-417b42`, draft PR #3:
-74 bats + 103 pytest = 177 tests, `make all` clean as root and as a non-root user, pytest also clean on
-Python 3.10 and 3.14. The README still states the old counts (53 tests); Phase 9 recounts them.
+hygiene and polishes the docs. **All five phases (5 to 9) are done** on branch `ccr-dec6d5a6-417b42`,
+draft PR #3: 74 bats + 103 pytest = 177 tests, `make all` clean as root and as a non-root user, pytest
+clean on Python 3.10 and 3.14, all 6 CI jobs green. The README numbers were recounted against the repo.
+What is left needs the owner: review and merge, tag `v1.0.0`, record the demo, the live-VM checks.
 
 **v1 complete + hardened.** A 5-module DevOps shell toolkit is built, tested and pushed to GitHub as a
 public repo. Now **CI-gated** (shellcheck + bats + pytest + Makefile-parse + ruff — all 5 jobs green),
@@ -106,13 +107,22 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 - [x] `.github/dependabot.yml` for actions and the three pip requirement files.
 - [x] `CHANGELOG.md` (1.0.0) and `.github/workflows/release.yml` (tag-driven, D21); `SECURITY.md`.
 
+## Done (added 2026-10-18), Phase 9: docs polish
+- [x] README: every number recounted (177 tests, 6 CI checks, 25 tools); Quality & CI table, Development
+      targets, roadmap and layout tree match the repo; safety model covers the non-root dry run and links
+      `SECURITY.md`; release and Python 3.10+ badges.
+- [x] Em dash separators removed from README, CONTRIBUTING, DEMO and module READMEs; sentences left broken by
+      an earlier dash removal repaired; README no longer names internal working files.
+- [x] Module READMEs and CONTRIBUTING describe current behaviour and the add-a-tool checklist (exec bit,
+      behaviour tests with `stub`, CHANGELOG line).
+
 ## Open / not done (user steps — need a human + real hardware)
 - [ ] Record `docs/demo.cast` / `demo.gif` from a live terminal and embed the GIF in the README.
 - [ ] `ssh_toolkit` live-VM smoke test (needs a real two-VM lab).
 - [x] Repo-name mismatch resolved — canonical name is `5-DevOps-Toolkit` (the remote); all docs aligned (D16).
 
 ## Next best action
-1. Phase 9: docs polish (recount every number in the README, style sweep).
+1. Owner: review PR #3 and merge it (squash or merge commit, owner's choice).
 2. Owner, after the merge: push the `v1.0.0` tag on `main` (`git tag -a v1.0.0 -m v1.0.0 && git push origin v1.0.0`);
    enable Settings > Code security > Private vulnerability reporting, which `SECURITY.md` points to.
 3. Human steps after the merge: record the demo GIF (only now that banners render correctly),
