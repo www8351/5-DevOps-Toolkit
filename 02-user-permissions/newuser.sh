@@ -24,7 +24,7 @@ Options:
   -h, --help     show this help and exit
 
 Notes:
-  Must run as root. Honours DRY_RUN=1 and ASSUME_YES=1.
+  Needs root; DRY_RUN=1 previews without it. Honours ASSUME_YES=1.
 EOF
 }
 

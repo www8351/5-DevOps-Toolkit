@@ -21,7 +21,8 @@ Options:
   -h, --help     show this help and exit
 
 Notes:
-  Must run as root. Auto-detects 'sudo' group, falling back to 'wheel'.
+  Needs root; DRY_RUN=1 previews without it. Auto-detects the 'sudo'
+  group, falling back to 'wheel'.
   Honours DRY_RUN=1 and ASSUME_YES=1.
 EOF
 }
