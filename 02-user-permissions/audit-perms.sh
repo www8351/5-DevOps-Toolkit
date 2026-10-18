@@ -57,6 +57,9 @@ main() {
   LIMIT=50
   SCAN_PATH="/"
 
+  # getopts rejects a long option, so catch --help before it runs.
+  [[ "${1:-}" == "--help" ]] && { usage; exit 0; }
+
   local opt
   while getopts ":n:h" opt; do
     case "$opt" in
