@@ -80,3 +80,47 @@ PKG="$REPO_ROOT/05-docker-devops/pkg.sh"
   [ "$status" -eq 1 ]
   [[ "$output" != *"index refreshed"* ]]
 }
+
+# ── docker-clean ──────────────────────────────────────────────────────────────
+CLEAN="$REPO_ROOT/05-docker-devops/docker-clean.sh"
+
+# Fake docker with one exited container, one "created" container and one
+# dangling image. Removal commands are only ever reached under DRY_RUN=1.
+FAKE_DOCKER='case "$1" in
+  info) exit 0 ;;
+  ps)
+    if [[ "$*" == *"-aq"* && "$*" == *"status=created"* ]]; then echo c2;
+    elif [[ "$*" == *"-aq"* ]]; then echo c1;
+    elif [[ "$*" == *"status=created"* ]]; then echo "  c1  nginx  web"; echo "  c2  redis  cache";
+    else echo "  c1  nginx  web"; fi ;;
+  images)
+    if [[ "$*" == *"-q"* ]]; then echo i1; else echo "  i1  <none>:<none>"; fi ;;
+  *) echo "stub:docker $*" ;;
+esac'
+
+@test "docker-clean fails when the daemon is unreachable" {
+  # It used to swallow the error and report "already tidy".
+  stub docker 'exit 1'
+  run bash "$CLEAN"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Docker daemon"* ]]
+  [[ "$output" != *"tidy"* ]]
+}
+
+@test "docker-clean dry run previews removals without claiming them" {
+  stub docker "$FAKE_DOCKER"
+  DRY_RUN=1 ASSUME_YES=1 run bash "$CLEAN"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] docker rm c1"$'\n'* ]]
+  [[ "$output" == *"[dry-run] docker rmi i1"$'\n'* ]]
+  [[ "$output" != *"removed"* ]]
+  [[ "$output" != *"stub:docker rm"* ]]
+}
+
+@test "docker-clean -f also lists created and dead containers in the plan" {
+  stub docker "$FAKE_DOCKER"
+  DRY_RUN=1 ASSUME_YES=1 run bash "$CLEAN" -f
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"c2  redis  cache"* ]]
+  [[ "$output" == *"[dry-run] docker rm c1 c2"$'\n'* ]]
+}
