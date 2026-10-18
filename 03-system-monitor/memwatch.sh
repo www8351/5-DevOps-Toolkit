@@ -68,9 +68,11 @@ main() {
   mem_pct="$(awk -v u="$mem_used" -v t="$mem_total" 'BEGIN { printf "%.1f", (t > 0 ? u / t * 100 : 0) }')"
   swap_pct="$(awk -v u="$swap_used" -v t="$swap_total" 'BEGIN { printf "%.1f", (t > 0 ? u / t * 100 : 0) }')"
 
-  # Alert when a threshold was given and RAM use reached it.
+  # Alert when a threshold was given and RAM use reached it. Compare the exact
+  # byte counts: the rounded percentage would fire early (84.96% shows 85.0%).
   local alert=0
-  if [[ -n "$warn" ]] && awk -v p="$mem_pct" -v w="$warn" 'BEGIN { exit !(p >= w) }'; then
+  if [[ -n "$warn" ]] \
+    && awk -v u="$mem_used" -v t="$mem_total" -v w="$warn" 'BEGIN { exit !(u * 100 >= w * t) }'; then
     alert=1
   fi
 

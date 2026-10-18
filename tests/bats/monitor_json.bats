@@ -85,6 +85,16 @@ echo "Swap:          200          50         150"'
   [ "$(jq_py 'd["ok"]')" = "False" ]
 }
 
+@test "memwatch --warn compares exact usage, not the rounded percentage" {
+  # 8496 of 10000 bytes is 84.96%, shown as 85.0% but still below 85.
+  stub free 'echo "x total used"; echo "Mem: 10000 8496 1504"; echo "Swap: 0 0 0"'
+  run bash "$REPO_ROOT/03-system-monitor/memwatch.sh" --warn 85
+  [ "$status" -eq 0 ]
+  stub free 'echo "x total used"; echo "Mem: 10000 8500 1500"; echo "Swap: 0 0 0"'
+  run bash "$REPO_ROOT/03-system-monitor/memwatch.sh" --warn 85
+  [ "$status" -eq 1 ]
+}
+
 @test "memwatch --warn outside 1-100 is a usage error" {
   run bash "$REPO_ROOT/03-system-monitor/memwatch.sh" --warn 0
   [ "$status" -eq 2 ]
