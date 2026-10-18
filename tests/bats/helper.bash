@@ -19,7 +19,8 @@ stub() {
   local dir="$BATS_TEST_TMPDIR/stubs"
   mkdir -p "$dir"
   [[ -n "$body" ]] || body="echo \"stub:$name \$*\""
-  printf '#!/usr/bin/env bash\n%s\n' "$body" >"$dir/$name"
+  # Absolute bash path, so a stub still runs when a test narrows PATH.
+  printf '#!%s\n%s\n' "$BASH" "$body" >"$dir/$name"
   chmod +x "$dir/$name"
   [[ ":$PATH:" == *":$dir:"* ]] || export PATH="$dir:$PATH"
 }

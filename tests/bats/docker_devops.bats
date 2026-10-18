@@ -15,7 +15,7 @@ PKG="$REPO_ROOT/05-docker-devops/pkg.sh"
   [[ "$output" == *"stub:apt-cache search curl"* ]]
 }
 
-@test "pkg search is read-only, so DRY_RUN=1 still runs it" {
+@test "pkg search is a query, so DRY_RUN=1 still runs it" {
   stub apt-get
   stub apt-cache
   DRY_RUN=1 run bash "$PKG" search curl
@@ -50,4 +50,33 @@ PKG="$REPO_ROOT/05-docker-devops/pkg.sh"
   [[ "$output" == *"nothing was changed"* ]]
   [[ "$output" != *"installation finished"* ]]
   [[ "$output" != *"stub:"* ]]
+}
+
+@test "pkg install dry run previews without claiming success" {
+  stub apt-get
+  stub id 'echo 1000'
+  DRY_RUN=1 ASSUME_YES=1 run bash "$PKG" install curl
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get install -y curl"* ]]
+  [[ "$output" != *"install complete"* ]]
+  [[ "$output" != *"stub:apt-get"* ]]
+}
+
+# On an apt host the real apt-get would win detection, so these tests run with
+# PATH narrowed to the stubs plus dirname (needed to locate lib/common.sh).
+@test "pkg update on dnf accepts exit 100 (updates available)" {
+  stub dnf 'echo "stub:dnf $*"; exit 100'
+  ln -s "$(command -v dirname)" "$BATS_TEST_TMPDIR/stubs/dirname"
+  PATH="$BATS_TEST_TMPDIR/stubs" run "$BASH" "$PKG" update
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"stub:dnf check-update"* ]]
+  [[ "$output" == *"index refreshed"* ]]
+}
+
+@test "pkg update on dnf reports a real failure" {
+  stub dnf 'exit 1'
+  ln -s "$(command -v dirname)" "$BATS_TEST_TMPDIR/stubs/dirname"
+  PATH="$BATS_TEST_TMPDIR/stubs" run "$BASH" "$PKG" update
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"index refreshed"* ]]
 }
