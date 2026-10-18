@@ -52,4 +52,6 @@ if [[ ! -f "${SCRIPT_DIR}/config.toml" && -f "${SCRIPT_DIR}/config.example.toml"
 fi
 
 # ── launch toolkit ────────────────────────────────────────────────────────────
-exec "$VENV_PY" -m ssh_toolkit "$@"
+# PYTHONPATH makes the package importable from any working directory, without
+# a cd that would break relative paths passed on the command line.
+PYTHONPATH="${SCRIPT_DIR}${PYTHONPATH:+:${PYTHONPATH}}" exec "$VENV_PY" -m ssh_toolkit "$@"

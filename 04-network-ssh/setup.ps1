@@ -52,5 +52,9 @@ if (-not (Test-Path $CfgPath) -and (Test-Path $CfgExample)) {
 }
 
 # ── launch toolkit ────────────────────────────────────────────────────────────
+# PYTHONPATH makes the package importable from any working directory, without
+# a Set-Location that would break relative paths passed on the command line.
+$sep = [IO.Path]::PathSeparator
+$env:PYTHONPATH = if ($env:PYTHONPATH) { "$ScriptDir$sep$env:PYTHONPATH" } else { $ScriptDir }
 & $VenvPy -m ssh_toolkit @Rest
 exit $LASTEXITCODE
