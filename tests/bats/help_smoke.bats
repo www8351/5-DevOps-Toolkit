@@ -53,3 +53,40 @@ load helper
     return 1
   fi
 }
+
+# The tool scripts the CLI contract applies to (helpers excluded, as above).
+tool_scripts() {
+  find "$REPO_ROOT" -name '*.sh' -not -path '*/lib/*' -not -path '*/.git/*' \
+    -not -path '*/.venv/*' -not -name name_echo.sh -not -name setup.sh | sort
+}
+
+@test "every tool rejects an unknown option with exit 2 (D22)" {
+  local failures=() script
+  while IFS= read -r script; do
+    run bash "$script" --definitely-not-an-option </dev/null
+    [ "$status" -eq 2 ] || failures+=("$(basename "$script"): exit $status (expected 2)")
+  done < <(tool_scripts)
+
+  if [ "${#failures[@]}" -ne 0 ]; then
+    printf 'usage-error contract violations:\n'
+    printf '  - %s\n' "${failures[@]}"
+    return 1
+  fi
+}
+
+@test "every tool shows help when --help comes after another argument (D22)" {
+  local failures=() script base
+  while IFS= read -r script; do
+    base="$(basename "$script")"
+    run bash "$script" some-argument --help </dev/null
+    if [ "$status" -ne 0 ] || [[ "$output" != *"$base"* ]]; then
+      failures+=("$base: exit $status")
+    fi
+  done < <(tool_scripts)
+
+  if [ "${#failures[@]}" -ne 0 ]; then
+    printf 'help-anywhere contract violations:\n'
+    printf '  - %s\n' "${failures[@]}"
+    return 1
+  fi
+}

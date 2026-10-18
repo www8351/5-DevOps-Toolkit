@@ -17,14 +17,17 @@ docker-clean.sh — prune stopped containers and dangling images
 Usage: $0 [options]
 
 Options:
-  -f                 also remove created/dead containers (not just exited)
-      --images-only      only prune dangling images
-      --containers-only  only prune stopped containers
+  -a, --all          also remove created/dead containers (not just exited)
+  --images-only      only prune dangling images
+  --containers-only  only prune stopped containers
+  --dry-run          print the removal commands instead of running them (DRY_RUN=1)
+  --yes              skip the confirmation prompt (ASSUME_YES=1)
   -h, --help         show this help and exit
 
-Environment:
-  DRY_RUN=1          print the removal commands instead of running them
-  ASSUME_YES=1       skip the confirmation prompt
+Deprecated (still works, removed in 2.0.0): -f (use -a/--all).
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
@@ -33,20 +36,23 @@ main() {
   local do_containers=1
   local do_images=1
 
+  help_requested "$@" && { usage; exit 0; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help)         usage; exit 0 ;;
-      -f)                include_dead=1 ;;
+      -a|--all)          include_dead=1 ;;
+      -f)                deprecated -f -a/--all; include_dead=1 ;;
       --images-only)     do_containers=0 ;;
       --containers-only) do_images=0 ;;
-      -*)                die "unknown option: $1 (try --help)" ;;
-      *)                 die "unexpected argument: $1 (try --help)" ;;
+      --dry-run)         export DRY_RUN=1 ;;
+      --yes)             export ASSUME_YES=1 ;;
+      -*)                usage_error "unknown option: $1" ;;
+      *)                 usage_error "unexpected argument: $1" ;;
     esac
     shift
   done
 
   [[ "$do_containers" -eq 1 || "$do_images" -eq 1 ]] \
-    || die "--images-only and --containers-only are mutually exclusive"
+    || usage_error "--images-only and --containers-only are mutually exclusive"
 
   need_cmd docker
   # Without this check every query below fails quietly (|| true) and a stopped
@@ -97,7 +103,7 @@ main() {
   fi
 
   hr
-  confirm "Proceed with removal ?" || { c_warn "aborted"; exit 0; }
+  confirm_or_abort "Proceed with removal?"
 
   if [[ -n "$container_ids" ]]; then
     # shellcheck disable=SC2086

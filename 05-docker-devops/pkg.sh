@@ -23,12 +23,13 @@ Subcommands:
   update           refresh the package index       (root with apt-get)
   search TERM      search the repositories         (read-only)
 
-Options:
+Options (accepted before or after the subcommand):
+  --dry-run        print mutating commands instead of running them (DRY_RUN=1)
+  --yes            skip the confirmation prompt (ASSUME_YES=1)
   -h, --help       show this help and exit
 
-Environment:
-  DRY_RUN=1        print mutating commands instead of running them
-  ASSUME_YES=1     skip the confirmation prompt
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 
 The package manager is auto-detected in this order: apt-get, dnf, yum.
 EOF
@@ -56,29 +57,29 @@ done_ok() {
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
+
+  # Flags may sit anywhere; package names never start with '-'.
+  local -a args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help)
-        usage
-        exit 0
-        ;;
-      --)
-        shift
-        break
-        ;;
-      -*)
-        die "unknown option: $1 (try --help)"
-        ;;
-      *)
-        break
-        ;;
+      --dry-run) export DRY_RUN=1; shift ;;
+      --yes)     export ASSUME_YES=1; shift ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
 
-  [[ $# -ge 1 ]] || { usage; die "missing subcommand"; }
+  [[ "${#args[@]}" -ge 1 ]] || usage_error "missing subcommand"
+  set -- "${args[@]}"
 
   local sub="$1"
   shift
+  case "$sub" in
+    install|upgrade|remove|update|search) ;;
+    *) usage_error "unknown subcommand: $sub" ;;
+  esac
 
   local pm
   pm="$(detect_pm)"
@@ -86,16 +87,16 @@ main() {
 
   case "$sub" in
     install)
-      [[ $# -ge 1 ]] || die "install requires at least one package name"
+      [[ $# -ge 1 ]] || usage_error "install requires at least one package name"
       require_root
-      confirm "Install with $pm: $* ?" || { c_warn "aborted"; exit 0; }
+      confirm_or_abort "Install with $pm: $*?"
       run "$pm" install -y "$@"
       done_ok "install complete"
       ;;
     upgrade)
-      [[ $# -eq 0 ]] || die "upgrade takes no arguments"
+      [[ $# -eq 0 ]] || usage_error "upgrade takes no arguments"
       require_root
-      confirm "Upgrade all packages with $pm ?" || { c_warn "aborted"; exit 0; }
+      confirm_or_abort "Upgrade all packages with $pm?"
       case "$pm" in
         apt-get) run "$pm" upgrade -y ;;
         dnf|yum) run "$pm" upgrade -y ;;
@@ -103,14 +104,14 @@ main() {
       done_ok "upgrade complete"
       ;;
     remove)
-      [[ $# -ge 1 ]] || die "remove requires at least one package name"
+      [[ $# -ge 1 ]] || usage_error "remove requires at least one package name"
       require_root
-      confirm "Remove with $pm: $* ?" || { c_warn "aborted"; exit 0; }
+      confirm_or_abort "Remove with $pm: $*?"
       run "$pm" remove -y "$@"
       done_ok "remove complete"
       ;;
     update)
-      [[ $# -eq 0 ]] || die "update takes no arguments"
+      [[ $# -eq 0 ]] || usage_error "update takes no arguments"
       case "$pm" in
         apt-get) require_root; run "$pm" update ;;
         dnf|yum)
@@ -124,7 +125,7 @@ main() {
       done_ok "index refreshed"
       ;;
     search)
-      [[ $# -eq 1 ]] || die "search requires exactly one term"
+      [[ $# -eq 1 ]] || usage_error "search requires exactly one term"
       # A query, not a change to installed packages, so it bypasses `run` and
       # still answers under DRY_RUN=1 (dnf/yum may refresh their metadata cache).
       # apt-get has no search command; apt-cache does.
@@ -132,9 +133,6 @@ main() {
         apt-get) need_cmd apt-cache; apt-cache search "$1" ;;
         dnf|yum) "$pm" search "$1" ;;
       esac
-      ;;
-    *)
-      die "unknown subcommand: $sub (try --help)"
       ;;
   esac
 }

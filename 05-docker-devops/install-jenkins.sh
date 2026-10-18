@@ -3,7 +3,7 @@
 # install-jenkins.sh — install Jenkins on Debian/Ubuntu (JDK, repo, service, firewall)
 #   commands showcased: apt-get, curl, systemctl, ufw
 #
-# Usage: sudo ./install-jenkins.sh
+# Usage: sudo ./install-jenkins.sh [--dry-run] [--yes]
 #
 set -euo pipefail
 
@@ -25,11 +25,12 @@ Installs the JDK, adds the official Jenkins apt repository, installs and
 enables the Jenkins service, and opens port 8080 in ufw if present.
 
 Options:
+  --dry-run      print every command instead of running it (DRY_RUN=1)
+  --yes          skip the confirmation prompt (ASSUME_YES=1)
   -h, --help     show this help and exit
 
-Environment:
-  DRY_RUN=1      print every command instead of running it
-  ASSUME_YES=1   skip the confirmation prompt
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
@@ -46,11 +47,13 @@ detect_ip() {
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help) usage; exit 0 ;;
-      -*)        die "unknown option: $1 (try --help)" ;;
-      *)         die "unexpected argument: $1 (try --help)" ;;
+      --dry-run) export DRY_RUN=1; shift ;;
+      --yes)     export ASSUME_YES=1; shift ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
 
@@ -59,7 +62,7 @@ main() {
   need_cmd curl
 
   banner "Jenkins installer (Debian/Ubuntu)"
-  confirm "Install Jenkins and its dependencies now ?" || { c_warn "aborted"; exit 0; }
+  confirm_or_abort "Install Jenkins and its dependencies now?"
 
   c_info "refreshing package index"
   run apt-get update

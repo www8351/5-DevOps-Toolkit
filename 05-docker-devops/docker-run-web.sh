@@ -17,16 +17,19 @@ docker-run-web.sh — launch a web container and print its URL + IP
 Usage: $0 [options]
 
 Options:
-  -i IMAGE     image preset or custom image (default: nginx)
-               presets: nginx | apache | jenkins | <custom-image>
-  -p HOSTPORT  host port to publish (default: 8080)
-  -n NAME      container name (default: derived from image)
-  -v HOSTDIR   host directory to bind-mount at the image docroot
-  -h, --help   show this help and exit
+  -i, --image IMAGE     image preset or custom image (default: nginx)
+                        presets: nginx | apache | jenkins | <custom-image>
+  -p, --port HOSTPORT   host port to publish (default: 8080)
+  --name NAME           container name (default: derived from image)
+  -v, --volume HOSTDIR  host directory to bind-mount at the image docroot
+  --dry-run             print the docker command instead of running it (DRY_RUN=1)
+  --yes                 skip the confirmation prompt (ASSUME_YES=1)
+  -h, --help            show this help and exit
 
-Environment:
-  DRY_RUN=1    print the docker command instead of running it
-  ASSUME_YES=1 skip the confirmation prompt
+Deprecated (still works, removed in 2.0.0): -n NAME (use --name).
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
@@ -36,29 +39,25 @@ main() {
   local name=""
   local hostdir=""
 
-  # Long-help shim: getopts does not handle --help on its own.
-  if [[ "${1:-}" == "--help" ]]; then
-    usage
-    exit 0
-  fi
-
-  local opt
-  while getopts ":i:p:n:v:h" opt; do
-    case "$opt" in
-      i) image="$OPTARG" ;;
-      p) hostport="$OPTARG" ;;
-      n) name="$OPTARG" ;;
-      v) hostdir="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG (try --help)" ;;
+  help_requested "$@" && { usage; exit 0; }
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -i|--image)  need_arg "$@"; image="$2"; shift 2 ;;
+      -p|--port)   need_arg "$@"; hostport="$2"; shift 2 ;;
+      --name)      need_arg "$@"; name="$2"; shift 2 ;;
+      -n)          deprecated -n --name; need_arg "$@"; name="$2"; shift 2 ;;
+      -v|--volume) need_arg "$@"; hostdir="$2"; shift 2 ;;
+      --dry-run)   export DRY_RUN=1; shift ;;
+      --yes)       export ASSUME_YES=1; shift ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
-  shift $((OPTIND - 1))
+
+  [[ "$hostport" =~ ^[1-9][0-9]{0,4}$ && "$hostport" -le 65535 ]] \
+    || usage_error "--port must be a port number 1-65535 (got '$hostport')"
 
   need_cmd docker
-
-  [[ "$hostport" =~ ^[0-9]+$ ]] || die "host port must be numeric: $hostport"
 
   # Resolve preset -> real image, container port and docroot.
   local real_image cport docroot
@@ -113,7 +112,7 @@ main() {
   c_info "port map   : ${hostport} -> ${cport}"
   [[ -n "$docroot" ]] && c_info "docroot    : $docroot"
 
-  confirm "Launch container '$name' from '$real_image' ?" || { c_warn "aborted"; exit 0; }
+  confirm_or_abort "Launch container '$name' from '$real_image'?"
 
   run docker "${docker_args[@]}"
 
