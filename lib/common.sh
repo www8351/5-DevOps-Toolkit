@@ -10,7 +10,7 @@
 #   c_fail MSG                     red [✗] result line on stdout (a failed check)
 #   die MSG                        log error + exit 1 (runtime failure)
 #   usage_error MSG                log error + --help hint + exit 2 (bad usage)
-#   need_arg OPT [VALUE]           usage_error unless OPT was given a value
+#   need_arg OPT [VALUE]           usage_error unless OPT got a non-empty value
 #   help_requested ARGS...         true if -h/--help appears before `--`
 #   deprecated OLD NEW             warn that a flag was renamed (D23)
 #   need_cmd CMD                   abort if a dependency binary is missing
@@ -61,7 +61,8 @@ usage_error() {
 }
 
 # need_arg OPT [VALUE] — call as `need_arg "$@"` inside an option's case arm.
-need_arg() { [[ $# -ge 2 ]] || usage_error "$1 needs a value"; }
+# An empty value counts as missing: `-o ""` must not silently mean "no owner".
+need_arg() { [[ $# -ge 2 && -n "$2" ]] || usage_error "$1 needs a value"; }
 
 # help_requested ARGS... — true if -h or --help appears before `--`, so help
 # works wherever it is placed on the command line.
@@ -144,9 +145,9 @@ json_str() {
 }
 
 # json_num VALUE — print VALUE as a JSON number, or null when it is not a plain
-# decimal number (empty, "?", "000" style placeholders are callers' business).
+# decimal number. JSON forbids leading zeros, so "007" becomes null too.
 json_num() {
-  if [[ "$1" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then printf '%s' "$1"; else printf 'null'; fi
+  if [[ "$1" =~ ^-?(0|[1-9][0-9]*)(\.[0-9]+)?$ ]]; then printf '%s' "$1"; else printf 'null'; fi
 }
 
 # ---- presentation ------------------------------------------------------------

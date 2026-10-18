@@ -164,6 +164,12 @@ in_common() {
   [ "$output" = "ok" ]
 }
 
+@test "need_arg is a usage error when the value is empty" {
+  in_common 'need_arg --owner ""'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--owner needs a value"* ]]
+}
+
 @test "need_arg is a usage error when the value is missing" {
   in_common 'need_arg --top'
   [ "$status" -eq 2 ]
@@ -227,8 +233,8 @@ in_common() {
 }
 
 @test "json_num passes numbers through and turns anything else into null" {
-  in_common 'json_num 42; echo; json_num 1.25; echo; json_num -3; echo; json_num ""; echo; json_num 1e3; echo; json_num 12abc'
-  [ "$output" = $'42\n1.25\n-3\nnull\nnull\nnull' ]
+  in_common 'json_num 42; echo; json_num 1.25; echo; json_num -3; echo; json_num 0.5; echo; json_num ""; echo; json_num 1e3; echo; json_num 12abc; echo; json_num 007'
+  [ "$output" = $'42\n1.25\n-3\n0.5\nnull\nnull\nnull\nnull' ]
 }
 
 # ── presentation & sourcing ───────────────────────────────────────────────────

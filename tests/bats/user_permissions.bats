@@ -153,3 +153,9 @@ GRANT="$REPO_ROOT/02-user-permissions/grant-sudo.sh"
   [ "$status" -eq 0 ]
   [ "$(mode_of "$BATS_TEST_TMPDIR/tree/a.txt")" = "600" ]
 }
+
+@test "permfix with an empty --owner is a usage error, not a silent skip" {
+  make_tree
+  run bash "$PERMFIX" -o "" "$BATS_TEST_TMPDIR/tree"
+  [ "$status" -eq 2 ]
+}
