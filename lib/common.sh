@@ -76,12 +76,16 @@ run() {
 }
 
 # ---- presentation ------------------------------------------------------------
-hr() { local w="${COLUMNS:-60}"; printf '%*s\n' "$w" '' | tr ' ' '─'; }
+# _rule N — print N '─' characters. Built with parameter expansion, not `tr`:
+# tr swaps single bytes, and '─' is three bytes in UTF-8.
+_rule() { local s; printf -v s '%*s' "$1" ''; printf '%s' "${s// /─}"; }
+
+hr() { _rule "${COLUMNS:-60}"; printf '\n'; }
 
 banner() {
-  local title="  $*  " width
-  width=${#title}
-  printf '%s┌%s┐%s\n' "$_C_BOLD" "$(printf '%*s' "$width" '' | tr ' ' '─')" "$_C_RESET"
+  local title="  $*  " line
+  line="$(_rule "${#title}")"
+  printf '%s┌%s┐%s\n' "$_C_BOLD" "$line" "$_C_RESET"
   printf '%s│%s│%s\n' "$_C_BOLD" "$title" "$_C_RESET"
-  printf '%s└%s┘%s\n' "$_C_BOLD" "$(printf '%*s' "$width" '' | tr ' ' '─')" "$_C_RESET"
+  printf '%s└%s┘%s\n' "$_C_BOLD" "$line" "$_C_RESET"
 }
