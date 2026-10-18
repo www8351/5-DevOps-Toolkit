@@ -70,10 +70,10 @@ mode_of() { stat -c '%a' "$1"; }
   [ "$(mode_of "$BATS_TEST_TMPDIR/tree/sub/b.txt")" = "644" ]
 }
 
-@test "permfix rejects a mode that is not octal" {
+@test "permfix rejects a mode that is not octal (usage error, exit 2)" {
   make_tree
   run bash "$PERMFIX" --files 999 "$BATS_TEST_TMPDIR/tree"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   [[ "$output" == *"octal"* ]]
 }
 
@@ -82,4 +82,80 @@ mode_of() { stat -c '%a' "$1"; }
   run bash "$PERMFIX" /
   [ "$status" -eq 1 ]
   [[ "$output" == *"refusing"* ]]
+}
+
+# ── uniform interface (D22, D23) ──────────────────────────────────────────────
+NEWUSER="$REPO_ROOT/02-user-permissions/newuser.sh"
+GRANT="$REPO_ROOT/02-user-permissions/grant-sudo.sh"
+
+@test "newuser long flags and --dry-run/--yes work like the env toggles" {
+  stub id 'echo 1000'
+  stub getent 'exit 2'
+  stub useradd
+  run bash "$NEWUSER" --user bob --shell /bin/zsh --home /srv/bob --no-user-group --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] useradd -m -d /srv/bob -s /bin/zsh -N bob"* ]]
+  [[ "$output" != *"deprecated"* ]]
+}
+
+@test "newuser -s and -d still work as deprecated aliases with a warning" {
+  stub id 'echo 1000'
+  stub getent 'exit 2'
+  stub useradd
+  DRY_RUN=1 ASSUME_YES=1 run bash "$NEWUSER" -u bob -s /bin/zsh -d /srv/bob
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] useradd -m -d /srv/bob -s /bin/zsh -U bob"* ]]
+  [[ "$output" == *"-s is deprecated, use --shell"* ]]
+  [[ "$output" == *"-d is deprecated, use --home"* ]]
+}
+
+@test "newuser without --user is a usage error" {
+  run bash "$NEWUSER" --shell /bin/sh
+  [ "$status" -eq 2 ]
+}
+
+@test "newuser declined at the prompt exits 1" {
+  stub id 'echo 1000'
+  stub getent 'exit 2'
+  stub useradd
+  run bash "$NEWUSER" --dry-run --user bob <<< "n"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"nothing was changed"* ]]
+}
+
+@test "grant-sudo accepts --user and rejects a stray argument" {
+  stub id 'echo 1000'
+  stub getent 'exit 0'
+  stub usermod
+  run bash "$GRANT" --user alice --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] usermod -aG sudo alice"* ]]
+  run bash "$GRANT" --user alice stray
+  [ "$status" -eq 2 ]
+}
+
+@test "whohas rejects more than one user" {
+  run bash "$REPO_ROOT/02-user-permissions/whohas.sh" root nobody
+  [ "$status" -eq 2 ]
+}
+
+@test "audit-perms accepts --limit and rejects a negative limit" {
+  mkdir -p "$BATS_TEST_TMPDIR/tree"
+  run bash "$REPO_ROOT/02-user-permissions/audit-perms.sh" --limit 5 "$BATS_TEST_TMPDIR/tree"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/02-user-permissions/audit-perms.sh" --limit -1 "$BATS_TEST_TMPDIR/tree"
+  [ "$status" -eq 2 ]
+}
+
+@test "permfix --dry-run wins over --execute" {
+  make_tree
+  run bash "$PERMFIX" --execute --dry-run "$BATS_TEST_TMPDIR/tree"
+  [ "$status" -eq 0 ]
+  [ "$(mode_of "$BATS_TEST_TMPDIR/tree/a.txt")" = "600" ]
+}
+
+@test "permfix with an empty --owner is a usage error, not a silent skip" {
+  make_tree
+  run bash "$PERMFIX" -o "" "$BATS_TEST_TMPDIR/tree"
+  [ "$status" -eq 2 ]
 }

@@ -8,8 +8,8 @@ For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit-cross-plat
 | Script | What it does | Key commands | Needs root |
 | --- | --- | --- | --- |
 | `netinfo.sh` | Show interfaces, routes, default gateway and listening ports | `ip addr`, `ip route`, `ss -tlnp`, `netstat` | No |
-| `pingsweep.sh` | Ping a list of hosts and print an up/down table | `ping -c1 -W1` | No |
-| `httpcheck.sh` | Check HTTP status code and response time for one or more URLs (exit 1 if any fails) | `curl -o /dev/null -w`, `wget` | No |
+| `pingsweep.sh` | Ping a list of hosts and print an up/down table (exit 1 if any is down, `--json`) | `ping -c1 -W1` | No |
+| `httpcheck.sh` | Check HTTP status code and response time for one or more URLs (exit 1 if any fails, `--json`) | `curl -o /dev/null -w`, `wget` | No |
 | `portscan.sh` | Discover live hosts on a subnet and scan open ports | `nmap -sn`, `nmap -Pn -sV` | No |
 | `sshkey.sh` | Generate an ed25519 SSH keypair and optionally copy it to a host | `ssh-keygen -t ed25519`, `ssh-copy-id` | No |
 | `name_echo.sh` | Interactive name-echo demo: prompts for a name and prints it N×3 | `read`, `seq` | No |
@@ -22,7 +22,7 @@ For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit-cross-plat
 
 # Ping a few hosts, or read them from a file
 ./pingsweep.sh 1.1.1.1 8.8.8.8 example.com
-./pingsweep.sh -f hosts.txt
+./pingsweep.sh --file hosts.txt --json
 
 # Check HTTP endpoints with a 5s timeout
 ./httpcheck.sh -t 5 https://example.com https://example.org
@@ -33,7 +33,7 @@ For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit-cross-plat
 
 # Generate a key and copy it to a server (Linux / macOS)
 ./sshkey.sh -C "me@laptop"
-./sshkey.sh -c deploy@server.example.com
+./sshkey.sh --copy-to deploy@server.example.com
 
 # Name-echo demo (run 3 iterations instead of the default 2)
 ./name_echo.sh 3
@@ -150,6 +150,6 @@ sudo python -m ssh_toolkit net --interface enp0s8 --address 193.168.1.2 --gatewa
 ## Notes
 
 - Every `.sh` script supports `-h` / `--help`.
-- `.sh` scripts honour `DRY_RUN=1` and `ASSUME_YES=1`.
+- `.sh` scripts and `ssh_toolkit` honour `DRY_RUN=1` and `ASSUME_YES=1` (the flag forms are `--dry-run` and `--yes`).
 - All `.sh` scripts source the shared `lib/common.sh` helper library.
 - `ssh_toolkit` uses `--dry-run` / `--yes` flags and has a `--verbose` mode.

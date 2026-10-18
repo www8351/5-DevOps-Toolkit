@@ -25,11 +25,11 @@ Small, focused Bash tools to create users, inspect identities, and audit or repa
 sudo ./permfix.sh --dirs 750 --files 640 -o www-data:www-data --execute /srv/www
 
 # Scan the system for risky files, capped at 20 results per category
-./audit-perms.sh -n 20 /usr
+./audit-perms.sh --limit 20 /usr
 
 # Create a user, then grant them admin rights
-sudo ./newuser.sh -u alice -s /bin/bash
-sudo ./grant-sudo.sh -u alice
+sudo ./newuser.sh --user alice --shell /bin/bash
+sudo ./grant-sudo.sh --user alice
 ```
 
 ## Conventions

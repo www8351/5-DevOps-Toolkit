@@ -24,7 +24,7 @@ sudo ./pkg.sh install nginx
 ./docker-run-web.sh -i nginx -p 8080 -v ./site
 
 # Preview a cleanup without removing anything, then run it for real
-DRY_RUN=1 ./docker-clean.sh
+./docker-clean.sh --dry-run          # or DRY_RUN=1 ./docker-clean.sh
 ./docker-clean.sh
 
 # Install Jenkins on Debian/Ubuntu

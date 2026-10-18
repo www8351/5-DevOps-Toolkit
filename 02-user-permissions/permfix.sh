@@ -20,43 +20,50 @@ Arguments:
   PATH            file tree to normalise (required, must exist)
 
 Options:
-  --dirs MODE    octal mode to apply to directories (default: 755)
-  --files MODE   octal mode to apply to files (default: 644)
-  -o OWNER[:GRP] also chown the tree to OWNER (optionally OWNER:GROUP)
-  --execute      actually apply changes (DEFAULT IS DRY-RUN)
-  -h, --help     show this help and exit
+  --dirs MODE              octal mode to apply to directories (default: 755)
+  --files MODE             octal mode to apply to files (default: 644)
+  -o, --owner OWNER[:GRP]  also chown the tree to OWNER (optionally OWNER:GROUP)
+  --execute                actually apply changes (DEFAULT IS DRY-RUN)
+  --dry-run                force a dry run, even with --execute (DRY_RUN=1)
+  --yes                    skip the confirmation prompt (ASSUME_YES=1)
+  -h, --help               show this help and exit
 
 Notes:
   Dry-run by default: counts what would change and prints the commands.
   Pass --execute to apply. Refuses to run on / itself.
-  Honours DRY_RUN=1 and ASSUME_YES=1. Changing owner to another user needs root.
+  Changing owner to another user needs root.
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
 main() {
-  local target="" dmode="755" fmode="644" owner="" execute=0
+  help_requested "$@" && { usage; exit 0; }
 
+  local dmode="755" fmode="644" owner="" execute=0
+  local -a args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help) usage; exit 0 ;;
-      --dirs) [[ -n "${2:-}" ]] || die "--dirs requires a MODE"; dmode="$2"; shift 2 ;;
-      --files) [[ -n "${2:-}" ]] || die "--files requires a MODE"; fmode="$2"; shift 2 ;;
-      -o) [[ -n "${2:-}" ]] || die "-o requires OWNER[:GROUP]"; owner="$2"; shift 2 ;;
-      --execute) execute=1; shift ;;
-      --) shift; break ;;
-      -*) die "unknown option: $1" ;;
-      *) target="$1"; shift ;;
+      --dirs)     need_arg "$@"; dmode="$2"; shift 2 ;;
+      --files)    need_arg "$@"; fmode="$2"; shift 2 ;;
+      -o|--owner) need_arg "$@"; owner="$2"; shift 2 ;;
+      --execute)  execute=1; shift ;;
+      --dry-run)  export DRY_RUN=1; shift ;;
+      --yes)      export ASSUME_YES=1; shift ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  # Trailing positional after --.
-  [[ -z "$target" && $# -gt 0 ]] && target="$1"
 
-  [[ -n "$target" ]] || { usage; die "missing required argument: PATH"; }
-  [[ -e "$target" ]] || die "path does not exist: $target"
+  [[ "${#args[@]}" -eq 1 ]] || usage_error "expected exactly one PATH (got ${#args[@]} arguments)"
   # Octal only: find -perm needs it for the dry-run count, and a typo such as
   # 999 should fail here rather than halfway through the tree.
-  [[ "$dmode" =~ ^[0-7]{3,4}$ ]] || die "--dirs MODE must be octal, e.g. 755 (got '$dmode')"
-  [[ "$fmode" =~ ^[0-7]{3,4}$ ]] || die "--files MODE must be octal, e.g. 644 (got '$fmode')"
+  [[ "$dmode" =~ ^[0-7]{3,4}$ ]] || usage_error "--dirs MODE must be octal, e.g. 755 (got '$dmode')"
+  [[ "$fmode" =~ ^[0-7]{3,4}$ ]] || usage_error "--files MODE must be octal, e.g. 644 (got '$fmode')"
+  local target="${args[0]}"
+  [[ -e "$target" ]] || die "path does not exist: $target"
   if [[ -d "$target" && "$(cd "$target" && pwd -P)" == "/" ]]; then
     die "refusing to normalise modes across the whole filesystem (/)"
   fi
@@ -94,7 +101,7 @@ main() {
 
   # Confirm only when we are actually going to mutate the filesystem.
   if [[ "${DRY_RUN:-0}" != "1" ]]; then
-    confirm "Apply mode/ownership changes under '$target'?" || die "aborted by user"
+    confirm_or_abort "Apply mode/ownership changes under '$target'?"
   fi
 
   hr

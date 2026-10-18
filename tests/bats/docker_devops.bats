@@ -117,10 +117,105 @@ esac'
   [[ "$output" != *"stub:docker rm"* ]]
 }
 
-@test "docker-clean -f also lists created and dead containers in the plan" {
+@test "docker-clean --all also lists created and dead containers in the plan" {
   stub docker "$FAKE_DOCKER"
-  DRY_RUN=1 ASSUME_YES=1 run bash "$CLEAN" -f
+  DRY_RUN=1 ASSUME_YES=1 run bash "$CLEAN" --all
   [ "$status" -eq 0 ]
   [[ "$output" == *"c2  redis  cache"* ]]
   [[ "$output" == *"[dry-run] docker rm c1 c2"$'\n'* ]]
+}
+
+# ── uniform interface (D22, D23) ──────────────────────────────────────────────
+@test "docker-clean -f still works as a deprecated alias for --all" {
+  stub docker "$FAKE_DOCKER"
+  run bash "$CLEAN" -f --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-f is deprecated, use -a/--all"* ]]
+  [[ "$output" == *"[dry-run] docker rm c1 c2"$'\n'* ]]
+}
+
+@test "docker-clean declined exits 1; contradictory flags exit 2" {
+  stub docker "$FAKE_DOCKER"
+  run bash "$CLEAN" <<< "n"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"nothing was changed"* ]]
+  run bash "$CLEAN" --images-only --containers-only
+  [ "$status" -eq 2 ]
+}
+
+WEB="$REPO_ROOT/05-docker-devops/docker-run-web.sh"
+
+@test "docker-run-web long flags, --name, and --dry-run/--yes" {
+  stub docker
+  run bash "$WEB" --image nginx --port 9090 --name site --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] docker run -d --name site -p 9090:80 nginx"* ]]
+}
+
+@test "docker-run-web -n still works as a deprecated alias for --name" {
+  stub docker
+  run bash "$WEB" -n site --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-n is deprecated, use --name"* ]]
+  [[ "$output" == *"--name site"* ]]
+}
+
+@test "docker-run-web: bad port and stray argument exit 2, a no exits 1" {
+  stub docker
+  run bash "$WEB" --port eighty
+  [ "$status" -eq 2 ]
+  run bash "$WEB" stray
+  [ "$status" -eq 2 ]
+  run bash "$WEB" --dry-run <<< "n"
+  [ "$status" -eq 1 ]
+}
+
+@test "install-jenkins: --dry-run/--yes flags; a no exits 1" {
+  stub apt-get
+  stub curl
+  run bash "$REPO_ROOT/05-docker-devops/install-jenkins.sh" --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get install -y jenkins"* ]]
+  run bash "$REPO_ROOT/05-docker-devops/install-jenkins.sh" --dry-run <<< "n"
+  [ "$status" -eq 1 ]
+}
+
+@test "pkg: flags work before or after the subcommand" {
+  stub apt-get
+  stub id 'echo 1000'
+  run bash "$PKG" install curl --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get install -y curl"* ]]
+  run bash "$PKG" --dry-run --yes remove curl
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get remove -y curl"* ]]
+}
+
+@test "pkg: help after a subcommand, usage errors exit 2, a no exits 1" {
+  stub apt-get
+  stub id 'echo 1000'
+  run bash "$PKG" install -h
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pkg.sh"* ]]
+  run bash "$PKG" --bogus install curl
+  [ "$status" -eq 2 ]
+  run bash "$PKG" install --purge
+  [ "$status" -eq 2 ]
+  run bash "$PKG" frobnicate
+  [ "$status" -eq 2 ]
+  run bash "$PKG" install
+  [ "$status" -eq 2 ]
+  run bash "$PKG" --dry-run install curl <<< "n"
+  [ "$status" -eq 1 ]
+}
+
+@test "pkg passes package-manager options after the subcommand through" {
+  stub apt-get
+  stub id 'echo 1000'
+  run bash "$PKG" install --no-install-recommends curl --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get install -y --no-install-recommends curl"* ]]
+  run bash "$PKG" remove curl --purge --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get remove -y --purge curl"* ]]
 }

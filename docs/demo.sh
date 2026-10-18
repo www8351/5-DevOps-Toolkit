@@ -41,10 +41,15 @@ step() {
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
+  if [[ "${1:-}" == "--" ]]; then
+    shift
+    [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"
+  fi
   case "${1:-}" in
-    -h|--help) usage; exit 0 ;;
     "") : ;;
-    *) die "unexpected argument: $1 (try -h)" ;;
+    -*) usage_error "unknown option: $1" ;;
+    *)  usage_error "unexpected argument: $1" ;;
   esac
 
   banner "5-DevOps-Toolkit: read-only demo"

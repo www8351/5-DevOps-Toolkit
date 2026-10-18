@@ -32,7 +32,7 @@ Show the 5 biggest subdirectories of `/var`, including hidden ones:
 Find the top client IPs in an access log (field 1, whitespace-delimited):
 
 ```bash
-./logtop.sh -f 1 -n 20 -p '404' /var/log/nginx/access.log
+./logtop.sh --field 1 --top 20 --grep '404' /var/log/nginx/access.log
 ```
 
 List the 10 largest files over 50 MB under your home directory:
@@ -61,6 +61,6 @@ Back up a project, then later extract it:
 - The destructive path in `backup.sh` (extraction) honours `DRY_RUN=1` (print the commands without running them) and `ASSUME_YES=1` (skip confirmation prompts):
 
 ```bash
-DRY_RUN=1 ./backup.sh --extract archive.tar.bz2 ./restore   # preview only
-ASSUME_YES=1 ./backup.sh --extract archive.tar.bz2 ./restore # no prompts
+./backup.sh --dry-run --extract archive.tar.bz2 ./restore   # preview only (or DRY_RUN=1)
+./backup.sh --yes --extract archive.tar.bz2 ./restore       # no prompts (or ASSUME_YES=1)
 ```

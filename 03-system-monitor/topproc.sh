@@ -17,35 +17,34 @@ topproc.sh — top-N processes by CPU or memory
 Usage: $0 [-m] [-n COUNT]
 
 Options:
-  -m             sort by memory usage (default: CPU)
-  -n COUNT       number of processes to show (default: 10)
-  -h, --help     show this help and exit
+  -m, --mem          sort by memory usage (default: CPU)
+  -n, --top COUNT    number of processes to show (default: 10)
+  -h, --help         show this help and exit
+
+Exit status: 0 on success, 2 on a usage error.
 
 Examples:
-  $0                 # top 10 by CPU
-  $0 -m              # top 10 by memory
-  $0 -m -n 5         # top 5 by memory
+  $0                     # top 10 by CPU
+  $0 --mem               # top 10 by memory
+  $0 --mem --top 5       # top 5 by memory
 EOF
 }
 
 main() {
-  local by_mem=0 count=10
+  help_requested "$@" && { usage; exit 0; }
 
-  while getopts ":mn:h-:" opt; do
-    case "$opt" in
-      m) by_mem=1 ;;
-      n) count="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      -) # support the long --help form
-         [[ "$OPTARG" == "help" ]] && { usage; exit 0; }
-         die "unknown option: --$OPTARG (try -h)" ;;
-      :) die "option -$OPTARG requires an argument (try -h)" ;;
-      \?) die "unknown option: -$OPTARG (try -h)" ;;
+  local by_mem=0 count=10
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -m|--mem) by_mem=1; shift ;;
+      -n|--top) need_arg "$@"; count="$2"; shift 2 ;;
+      --) shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
-  shift $((OPTIND - 1))
 
-  [[ "$count" =~ ^[1-9][0-9]*$ ]] || die "COUNT must be a positive integer, got: $count"
+  [[ "$count" =~ ^[1-9][0-9]*$ ]] || usage_error "--top must be a positive integer, got: $count"
 
   need_cmd ps
 

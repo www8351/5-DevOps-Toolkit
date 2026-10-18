@@ -4,6 +4,63 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18 (evening): Phases 12 and 13, monitors JSON, docs, review fixes (1.1.0 complete)
+
+**What was done**
+- Phase 12: `--json` for `diskwatch` (KiB via `df -kP`), `memwatch` (bytes, `-w/--warn`), `httpcheck`
+  (status, seconds) and `pingsweep` (up, rtt). One document on stdout, top-level `ok`. `pingsweep` exits 1
+  on a down host; failing rows moved to stdout (`c_fail`). New `json_num`. D24 recorded.
+- Phase 13: `ssh_toolkit` reads `DRY_RUN`/`ASSUME_YES`; README "Command-line conventions" (flag letters,
+  exit codes, streams, `--json` with `jq`/`json.tool`); CONTRIBUTING parser template; CHANGELOG 1.1.0.
+- An adversarial review of the migration (12 findings, 1 question) drove these fixes, each test first:
+  `pkg` had stopped passing `--purge`/`--no-install-recommends` to the package manager; `sshkey` deleted the
+  old key before ssh-keygen ran (now generates beside it and swaps on success); 14 tools rejected `--`;
+  `need_arg` accepted an empty value (`permfix -o ""` silently skipped chown); `memwatch --warn` compared
+  the rounded percentage; `json_num` passed leading zeros; `name_echo.sh` took `--help` as an iteration
+  count, so it now follows the contract instead of being exempt.
+- Documented rather than changed: stray arguments now exit 2 in thirteen tools (all listed in the
+  changelog), `0` and leading zeros are rejected, bundled/attached short options are gone (D23 note), and an
+  option value of literally `-h` triggers help (D22 note).
+- Declined: guarding empty-array expansion for bash < 4.4; the project targets Bash 5 (README badge).
+
+**What was tried / found**
+- A heredoc inside a heredoc (`cat <<'EOF'` around a script whose `usage()` also uses `EOF`) ended early;
+  the leftover lines ran as harmless "command not found" noise. The file was rewritten with the editor;
+  the tree was checked before continuing.
+- The first `--` contract test matched "unknown option: --x" as a failure; it now matches the exact line.
+
+**Verification**
+- `make all`: shellcheck, `bash -n` (28 scripts), ruff, 147 bats, 109 pytest, all clean. Release-note
+  extraction for 1.1.0 returns its section.
+
+## 2026-10-18 (evening): Phases 10 and 11, one command-line contract for every tool
+
+**Goal:** The owner picked interface consistency as the next wave, with three rules: renamed flags stay
+as warned aliases (D23), JSON for the monitors only, exit codes 0/1/2 (D22).
+
+**What was done**
+- Phase 10, `lib/common.sh`: `usage_error` (exit 2 plus a `--help` hint), `need_arg`, `help_requested`
+  (help anywhere before `--`), `deprecated`, `confirm_or_abort` (a "no" exits 1 everywhere), `c_fail`
+  (failed result row on stdout), `json_str` (JSON string escaping, round-trip tested through Python; CI runs the C locale, and the suite was also run once by hand under C.UTF-8). `confirm` now asks on stderr.
+- Phase 11, one module per commit: every tool's parser rewritten to the same `while/case` shape; long
+  flags everywhere; `--dry-run`/`--yes` on the ten tools that change the system; old flags renamed with
+  aliases. Two contract tests in `help_smoke.bats` (unknown option exits 2; `--help` after another argument)
+  failed for all 25 tools before and pass after.
+
+**What was tried / found**
+- An inventory agent mapped every flag, exit path and doc reference first, so each rename came with its
+  test and doc edits in the same commit.
+- Real bugs surfaced by the migration: `pkg.sh install -h` tried to install a package called "-h";
+  `sshkey.sh --yes` on an existing key hung at ssh-keygen's own "Overwrite (y/n)?" (the old key is now
+  removed after the tool's own confirmation); five tools silently ignored stray arguments.
+- Earlier tests that checked malformed arguments (mkswap sizes and paths, permfix modes, diskwatch range,
+  httpcheck timeout) expected exit 1; they now expect 2, which is the point of D22.
+- Bundled short options (`-an 5`) and attached values (`-n5`) are no longer parsed; recorded in D22 and
+  for the changelog.
+
+**Verification**
+- `make all`: shellcheck, `bash -n`, ruff, 128 bats, 103 pytest, all clean.
+
 ## 2026-10-18: Phase 9, docs polish (wave complete)
 
 **Goal:** Every claim in the docs matches the repo, in the house style.

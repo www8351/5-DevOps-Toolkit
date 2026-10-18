@@ -19,25 +19,25 @@ setup() {
 @test "mkswap rejects a size without a unit" {
   # A bare number meant bytes to fallocate but MiB to the dd fallback.
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 1048576 -f "$BATS_TEST_TMPDIR/s.swap"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   [[ "$output" == *"invalid SIZE"* ]]
 }
 
 @test "mkswap rejects a zero size" {
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 0G -f "$BATS_TEST_TMPDIR/s.swap"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   [[ "$output" == *"invalid SIZE"* ]]
 }
 
 @test "mkswap rejects a size below 1M, which mkswap itself would refuse" {
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 512K -f "$BATS_TEST_TMPDIR/s.swap"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   [[ "$output" == *"too small"* ]]
 }
 
 @test "mkswap rejects a size long enough to overflow the arithmetic" {
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 18014398509481985G -f "$BATS_TEST_TMPDIR/s.swap"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   [[ "$output" == *"invalid SIZE"* ]]
 }
 
@@ -50,7 +50,7 @@ setup() {
 
 @test "mkswap rejects a relative swapfile path" {
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 1G -f relative.swap
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   [[ "$output" == *"absolute"* ]]
 }
 
@@ -116,22 +116,67 @@ echo "/dev/loop3       64M   64M     0 100% /snap/core22/1234"'
 
 @test "diskwatch flags a full disk and exits 1" {
   stub df "$FAKE_DF"
-  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 90
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" --warn 90
   [ "$status" -eq 1 ]
   [[ "$output" == *"/mnt/my disk"*"95%"* ]]
 }
 
 @test "diskwatch ignores tmpfs and snap loop mounts that are always full" {
   stub df "$FAKE_DF"
-  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 99
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -w 99
   [ "$status" -eq 0 ]
   [[ "$output" != *"/run"* ]]
   [[ "$output" != *"/snap/"* ]]
   [[ "$output" == *"all filesystems are below 99%"* ]]
 }
 
-@test "diskwatch rejects a threshold outside 1-100" {
-  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 101
-  [ "$status" -eq 1 ]
+@test "diskwatch rejects a threshold outside 1-100 (usage error, exit 2)" {
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" --warn 101
+  [ "$status" -eq 2 ]
   [[ "$output" == *"threshold must be"* ]]
+}
+
+# ── uniform interface (D22, D23) ──────────────────────────────────────────────
+@test "diskwatch -t still works as a deprecated alias for --warn" {
+  stub df "$FAKE_DF"
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 90
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"-t is deprecated, use -w/--warn"* ]]
+  [[ "$output" == *"/mnt/my disk"* ]]
+}
+
+@test "mkswap long flags and --dry-run/--yes preview without env toggles" {
+  local file="$BATS_TEST_TMPDIR/s.swap"
+  run bash "$MKSWAP" --size 1G --file "$file" --persist --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] fallocate -l 1G $file"* ]]
+  [ ! -e "$file" ]
+}
+
+@test "mkswap declined at the prompt exits 1" {
+  run bash "$MKSWAP" --dry-run --size 1G --file "$BATS_TEST_TMPDIR/s.swap" <<< "n"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"nothing was changed"* ]]
+}
+
+@test "memwatch --bytes works and a stray argument is a usage error" {
+  stub free "$LOCALIZED_FREE"
+  run bash "$REPO_ROOT/03-system-monitor/memwatch.sh" --bytes
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/03-system-monitor/memwatch.sh" stray
+  [ "$status" -eq 2 ]
+}
+
+@test "topproc --top and --mem work; a zero count is a usage error" {
+  stub ps 'echo "USER PID %CPU %MEM COMMAND"; echo "root 1 0.0 9.9 init"'
+  run bash "$REPO_ROOT/03-system-monitor/topproc.sh" --top 1 --mem
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"by memory"* ]]
+  run bash "$REPO_ROOT/03-system-monitor/topproc.sh" --top 0
+  [ "$status" -eq 2 ]
+}
+
+@test "sysinfo rejects a stray argument with exit 2" {
+  run bash "$REPO_ROOT/03-system-monitor/sysinfo.sh" stray
+  [ "$status" -eq 2 ]
 }

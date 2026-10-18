@@ -9,8 +9,8 @@ One-glance dashboards for host, CPU, memory, disk and swap: small, focused Bash 
 | --- | --- | --- | --- |
 | `sysinfo.sh` | Boxed dashboard of host, kernel, CPU, memory and disk | `uname`, `hostnamectl`, `lscpu`, `df`, `free`, `uptime` | No |
 | `topproc.sh` | Top-N processes by CPU or memory | `ps`, `sort`, `head` | No |
-| `diskwatch.sh` | Flag mounted filesystems above a usage threshold (cron-friendly exit code) | `df`, `tail`, `read` | No |
-| `memwatch.sh` | RAM and swap usage report with percentages | `free`, `swapon`, `awk`, `/proc/meminfo` | No |
+| `diskwatch.sh` | Flag mounted filesystems above a usage threshold (exit 1 on alert, `--json`) | `df`, `tail`, `read` | No |
+| `memwatch.sh` | RAM and swap usage report with percentages (`--warn` alerts with exit 1, `--json`) | `free`, `swapon`, `awk`, `/proc/meminfo` | No |
 | `mkswap.sh` | Create and enable a swapfile, optionally persisting in `/etc/fstab` | `fallocate`, `dd`, `chmod`, `mkswap`, `swapon`, `/etc/fstab` | **Yes** |
 
 ## Usage
@@ -31,10 +31,12 @@ A few real invocations:
 ./topproc.sh -m -n 5
 
 # Alert (exit 1) when any real filesystem is at or above 90%
-./diskwatch.sh -t 90
+./diskwatch.sh --warn 90
+./diskwatch.sh --json | python3 -m json.tool   # machine-readable
 
 # RAM/swap report with percentages
 ./memwatch.sh
+./memwatch.sh --warn 90      # exit 1 when RAM use reaches 90%
 
 # Create and enable a persistent 2G swapfile (root)
 sudo ./mkswap.sh -s 2G --persist

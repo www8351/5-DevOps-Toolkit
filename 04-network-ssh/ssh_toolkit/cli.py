@@ -18,10 +18,12 @@ Global flags (accepted before or after the subcommand):
 
 SSH flags: --host, --user, --port, --keyfile
 Precedence for every value: CLI flag > SSHTK_* env var > config.toml > default.
+DRY_RUN=1 and ASSUME_YES=1 act like --dry-run and --yes, as in every toolkit tool.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -293,6 +295,15 @@ def _build_parser() -> argparse.ArgumentParser:
 
 # ── entry point ───────────────────────────────────────────────────────────────
 
+def _apply_env_toggles(args: argparse.Namespace) -> argparse.Namespace:
+    """DRY_RUN=1 / ASSUME_YES=1 switch on --dry-run / --yes, like the shell tools (D22)."""
+    if os.environ.get("DRY_RUN") == "1":
+        args.dry_run = True
+    if os.environ.get("ASSUME_YES") == "1":
+        args.yes = True
+    return args
+
+
 def _default_user() -> str:
     import getpass
     return getpass.getuser()
@@ -311,7 +322,7 @@ _HANDLERS = {
 
 def main() -> None:
     parser = _build_parser()
-    args = parser.parse_args()
+    args = _apply_env_toggles(parser.parse_args())
 
     if args.verbose:
         setup_logging(verbose=True)

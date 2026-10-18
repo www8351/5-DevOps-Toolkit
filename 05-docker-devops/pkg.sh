@@ -23,12 +23,17 @@ Subcommands:
   update           refresh the package index       (root with apt-get)
   search TERM      search the repositories         (read-only)
 
-Options:
+Options (accepted before or after the subcommand):
+  --dry-run        print mutating commands instead of running them (DRY_RUN=1)
+  --yes            skip the confirmation prompt (ASSUME_YES=1)
   -h, --help       show this help and exit
 
-Environment:
-  DRY_RUN=1        print mutating commands instead of running them
-  ASSUME_YES=1     skip the confirmation prompt
+Any other option after the subcommand goes to the package manager, e.g.
+  $0 install --no-install-recommends nginx
+  $0 remove --purge nginx
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 
 The package manager is auto-detected in this order: apt-get, dnf, yum.
 EOF
@@ -56,29 +61,33 @@ done_ok() {
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
+
+  # Our own flags may sit anywhere. Before the subcommand any other option is
+  # a usage error; after it, it belongs to the package manager (pm_opts).
+  # Package names never start with '-'.
+  local sub=""
+  local -a args=() pm_opts=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help)
-        usage
-        exit 0
-        ;;
-      --)
-        shift
-        break
-        ;;
+      --dry-run) export DRY_RUN=1; shift ;;
+      --yes)     export ASSUME_YES=1; shift ;;
+      --) shift; args+=("$@"); break ;;
       -*)
-        die "unknown option: $1 (try --help)"
-        ;;
+        [[ -n "$sub" ]] || usage_error "unknown option: $1"
+        pm_opts+=("$1"); shift ;;
       *)
-        break
-        ;;
+        if [[ -z "$sub" ]]; then sub="$1"; else args+=("$1"); fi
+        shift ;;
     esac
   done
 
-  [[ $# -ge 1 ]] || { usage; die "missing subcommand"; }
-
-  local sub="$1"
-  shift
+  [[ -n "$sub" ]] || usage_error "missing subcommand"
+  case "$sub" in
+    install|upgrade|remove|update|search) ;;
+    *) usage_error "unknown subcommand: $sub" ;;
+  esac
+  set -- "${args[@]}"
 
   local pm
   pm="$(detect_pm)"
@@ -86,55 +95,49 @@ main() {
 
   case "$sub" in
     install)
-      [[ $# -ge 1 ]] || die "install requires at least one package name"
+      [[ $# -ge 1 ]] || usage_error "install requires at least one package name"
       require_root
-      confirm "Install with $pm: $* ?" || { c_warn "aborted"; exit 0; }
-      run "$pm" install -y "$@"
+      confirm_or_abort "Install with $pm: $*?"
+      run "$pm" install -y "${pm_opts[@]}" "$@"
       done_ok "install complete"
       ;;
     upgrade)
-      [[ $# -eq 0 ]] || die "upgrade takes no arguments"
+      [[ $# -eq 0 ]] || usage_error "upgrade takes no arguments"
       require_root
-      confirm "Upgrade all packages with $pm ?" || { c_warn "aborted"; exit 0; }
-      case "$pm" in
-        apt-get) run "$pm" upgrade -y ;;
-        dnf|yum) run "$pm" upgrade -y ;;
-      esac
+      confirm_or_abort "Upgrade all packages with $pm?"
+      run "$pm" upgrade -y "${pm_opts[@]}"
       done_ok "upgrade complete"
       ;;
     remove)
-      [[ $# -ge 1 ]] || die "remove requires at least one package name"
+      [[ $# -ge 1 ]] || usage_error "remove requires at least one package name"
       require_root
-      confirm "Remove with $pm: $* ?" || { c_warn "aborted"; exit 0; }
-      run "$pm" remove -y "$@"
+      confirm_or_abort "Remove with $pm: $*?"
+      run "$pm" remove -y "${pm_opts[@]}" "$@"
       done_ok "remove complete"
       ;;
     update)
-      [[ $# -eq 0 ]] || die "update takes no arguments"
+      [[ $# -eq 0 ]] || usage_error "update takes no arguments"
       case "$pm" in
-        apt-get) require_root; run "$pm" update ;;
+        apt-get) require_root; run "$pm" update "${pm_opts[@]}" ;;
         dnf|yum)
           # check-update exits 100 when updates are available; only other
           # non-zero codes are real failures.
           local rc=0
-          run "$pm" check-update || rc=$?
+          run "$pm" check-update "${pm_opts[@]}" || rc=$?
           [[ "$rc" -eq 0 || "$rc" -eq 100 ]] || die "$pm check-update failed (exit $rc)"
           ;;
       esac
       done_ok "index refreshed"
       ;;
     search)
-      [[ $# -eq 1 ]] || die "search requires exactly one term"
+      [[ $# -eq 1 ]] || usage_error "search requires exactly one term"
       # A query, not a change to installed packages, so it bypasses `run` and
       # still answers under DRY_RUN=1 (dnf/yum may refresh their metadata cache).
       # apt-get has no search command; apt-cache does.
       case "$pm" in
-        apt-get) need_cmd apt-cache; apt-cache search "$1" ;;
-        dnf|yum) "$pm" search "$1" ;;
+        apt-get) need_cmd apt-cache; apt-cache search "${pm_opts[@]}" "$1" ;;
+        dnf|yum) "$pm" search "${pm_opts[@]}" "$1" ;;
       esac
-      ;;
-    *)
-      die "unknown subcommand: $sub (try --help)"
       ;;
   esac
 }

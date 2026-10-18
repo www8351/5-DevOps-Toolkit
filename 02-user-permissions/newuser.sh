@@ -17,39 +17,47 @@ newuser.sh — create a user with home, login shell and own group, then set a pa
 Usage: $0 -u USER [options]
 
 Options:
-  -u USER        username to create (required)
-  -s SHELL       login shell (default: /bin/bash)
-  -d HOME        home directory (default: /home/USER)
-  -N             do NOT create a per-user group (passes -N instead of -U)
-  -h, --help     show this help and exit
+  -u, --user USER     username to create (required)
+  --shell SHELL       login shell (default: /bin/bash)
+  --home DIR          home directory (default: /home/USER)
+  --no-user-group     do NOT create a per-user group (passes -N instead of -U)
+  --dry-run           print the commands instead of running them (DRY_RUN=1)
+  --yes               skip the confirmation prompt (ASSUME_YES=1)
+  -h, --help          show this help and exit
+
+Deprecated (still work, removed in 2.0.0): -s SHELL (use --shell),
+-d HOME (use --home), -N (use --no-user-group).
 
 Notes:
-  Needs root; DRY_RUN=1 previews without it. Honours ASSUME_YES=1.
+  Needs root; a dry run previews without it.
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
+
   local user="" shell="/bin/bash" home="" group_flag="-U"
-
-  # Long help support before getopts.
-  case "${1:-}" in
-    -h|--help) usage; exit 0 ;;
-  esac
-
-  local opt
-  while getopts ":u:s:d:Nh" opt; do
-    case "$opt" in
-      u) user="$OPTARG" ;;
-      s) shell="$OPTARG" ;;
-      d) home="$OPTARG" ;;
-      N) group_flag="-N" ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG" ;;
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -u|--user)       need_arg "$@"; user="$2"; shift 2 ;;
+      --shell)         need_arg "$@"; shell="$2"; shift 2 ;;
+      -s)              deprecated -s --shell; need_arg "$@"; shell="$2"; shift 2 ;;
+      --home)          need_arg "$@"; home="$2"; shift 2 ;;
+      -d)              deprecated -d --home; need_arg "$@"; home="$2"; shift 2 ;;
+      --no-user-group) group_flag="-N"; shift ;;
+      -N)              deprecated -N --no-user-group; group_flag="-N"; shift ;;
+      --dry-run)       export DRY_RUN=1; shift ;;
+      --yes)           export ASSUME_YES=1; shift ;;
+      --) shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
 
-  [[ -n "$user" ]] || { usage; die "missing required option: -u USER"; }
+  [[ -n "$user" ]] || usage_error "missing required option: -u/--user USER"
   [[ -z "$home" ]] && home="/home/$user"
 
   require_root
@@ -67,7 +75,7 @@ main() {
   c_info "home  : $home"
   c_info "group : $([[ "$group_flag" == "-U" ]] && echo "own per-user group" || echo "no per-user group")"
 
-  confirm "Create user '$user' now?" || die "aborted by user"
+  confirm_or_abort "Create user '$user' now?"
 
   run useradd -m -d "$home" -s "$shell" "$group_flag" "$user"
   [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "user '$user' created"

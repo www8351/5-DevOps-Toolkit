@@ -2,7 +2,7 @@
 
 # 🧰 5-DevOps-Toolkit
 
-### `5 folders` · `25 single-purpose tools` · `1 shared engine` · `177 tests` · `6 green CI checks`
+### `5 folders` · `25 single-purpose tools` · `1 shared engine` · `256 tests` · `6 green CI checks`
 
 **Turning a raw Linux command cheat-sheet into a working, guarded DevOps toolkit.**
 *הופך רשימת פקודות לינוקס גולמית לערכת כלים אמיתית, מסודרת ומוגנת.*
@@ -143,19 +143,56 @@ Every script follows the same defensive contract:
 - **`-h` / `--help`** on every tool, even when the tool's own dependencies are missing.
 - **`need_cmd`** aborts early if a required binary is missing.
 - **`require_root`** refuses to run privileged tools as a normal user, except for a `DRY_RUN=1` preview.
-- **`confirm`** asks before any destructive action; bypass in CI with `ASSUME_YES=1`.
-- **`DRY_RUN=1`** prints what *would* happen instead of doing it. With `sudo`, write
-  `sudo DRY_RUN=1 ./tool.sh`, because `sudo` drops variables set before it.
-- Health checks (`diskwatch.sh`, `httpcheck.sh`) exit 1 on a problem, so cron or CI can alert on them.
+- **`confirm`** asks before any destructive action; skip it in CI with `--yes` (or `ASSUME_YES=1`).
+  Answering no stops the tool with exit 1.
+- **`--dry-run`** (or `DRY_RUN=1`) prints what *would* happen instead of doing it. The flag survives
+  `sudo`; the variable only does when written after it (`sudo DRY_RUN=1 ./tool.sh`).
+- Health checks (`diskwatch.sh`, `memwatch.sh --warn`, `httpcheck.sh`, `pingsweep.sh`) exit 1 on a
+  problem, so cron or CI can alert on them.
 
 The Python tools follow the same rules: `ssh_toolkit net` changes nothing without `--apply` and asks
 first, and `ec2-deploy.py` asks before a billed launch. See [`SECURITY.md`](SECURITY.md) for safe use
 and how to report a problem.
 
-> Two files in `04-network-ssh/` are helpers rather than tools and are exempt from the `-h`
-> contract on purpose: `name_echo.sh` (an interactive demo) and `setup.sh` (a venv
-> bootstrapper for `ssh_toolkit`). The bats smoke test skips exactly those two and enforces the
-> contract on everything else.
+> One file is exempt from the help contract on purpose: `04-network-ssh/setup.sh`, the venv
+> bootstrapper for `ssh_toolkit`, which forwards every argument (help included) to the Python
+> package. The bats contract tests skip exactly that file and enforce the rules on everything else.
+
+---
+
+## ⌨️ Command-line conventions
+
+Every tool speaks the same command-line language, so learning one teaches the rest.
+
+| Flag | Means the same thing in every tool |
+|------|------------------------------------|
+| `-h`, `--help` | help, accepted anywhere on the line |
+| `-n` | how many rows to show (`--top`, or `--limit` / `--lines` where nothing is ranked) |
+| `-f`, `--file` | a file to read or write |
+| `-p`, `--port(s)` | a port or port list |
+| `-t`, `--timeout` | a timeout in seconds |
+| `-s`, `--size` | a size |
+| `-w`, `--warn` | an alert threshold in percent |
+| `-a`, `--all` | include everything |
+| `-u`, `--user` | a user |
+| `--dry-run`, `--yes` | preview only / skip prompts (same as `DRY_RUN=1` / `ASSUME_YES=1`) |
+| `--json` | one JSON document on stdout (`diskwatch`, `memwatch`, `httpcheck`, `pingsweep`) |
+
+| Exit code | Meaning |
+|:---------:|---------|
+| `0` | success (a report tool also exits 0 when its report lists findings) |
+| `1` | a problem found by a check, a failed operation, or a declined prompt |
+| `2` | a usage error: unknown flag, missing value, malformed number, wrong argument count |
+
+Results go to stdout; warnings, errors and prompts go to stderr, so output can be piped safely.
+
+```bash
+./03-system-monitor/diskwatch.sh --warn 90 --json | python3 -m json.tool
+./04-network-ssh/httpcheck.sh --json https://example.com | jq '.results[] | select(.ok | not)'
+./04-network-ssh/pingsweep.sh --file hosts.txt || echo "a host is down"
+```
+
+Flags renamed in 1.1.0 still work and print a warning until 2.0.0; see [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -167,12 +204,12 @@ a green tick means the whole toolkit is clean.
 | Check | What it guarantees |
 |-------|--------------------|
 | **shellcheck + `bash -n`** | every `*.sh` is syntax-clean and shellcheck-clean (`-e SC1091`) |
-| **bats** | 74 tests: `lib/common.sh`, the *“`-h`/`--help` work before dependency checks”* and executable-bit contracts, and behaviour tests for the tools on temp fixtures and stubbed commands |
-| **pytest** (Python 3.10 + 3.14) | 103 tests over `ssh_toolkit` (config precedence, CLI flags, input validation, remote command building, rollback) and `ec2-deploy.py` (launch prompt, env toggles) |
+| **bats** | 147 tests: `lib/common.sh`, the command-line contract for every tool (help anywhere and before dependency checks, exit 2 on bad usage, executable bit), behaviour tests on temp fixtures and stubbed commands, and the monitors' JSON |
+| **pytest** (Python 3.10 + 3.14) | 109 tests over `ssh_toolkit` (config precedence, CLI flags, env toggles, input validation, remote command building, rollback) and `ec2-deploy.py` (launch prompt, env toggles) |
 | **py_compile + ruff** | the Python compiles and passes ruff syntax + pyflakes rules (`E9,F`) |
 | **makefile** | the `Makefile` parses and every target resolves (`make -n all`) |
 
-**177 tests total, all VM-free.** Decisions and their rationale live in [`DECISIONS.md`](DECISIONS.md),
+**256 tests total, all VM-free.** Decisions and their rationale live in [`DECISIONS.md`](DECISIONS.md),
 the current state in [`STATUS.md`](STATUS.md), a dated history in [`PROGRESS.md`](PROGRESS.md), and
 release notes in [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -215,7 +252,9 @@ make all           # lint + test
 - ✅ `ssh_toolkit`: cross-platform (Windows / macOS / Linux) Python SSH automation
 - ✅ Bilingual (HE / EN) documentation, published to GitHub
 - ✅ **CI**: shellcheck, bats, pytest on Python 3.10 and 3.14, ruff and a Makefile check on every push and PR
-- ✅ **177 tests** (74 bats + 103 pytest), all VM-free, including behaviour tests for the shell tools
+- ✅ **256 tests** (147 bats + 109 pytest), all VM-free, including behaviour tests for the shell tools
+- ✅ **One command-line contract** for all tools: shared flag letters, help anywhere, exit codes 0/1/2,
+      `--dry-run`/`--yes` flags, and `--json` for the four monitors
 - ✅ **Task runner**: `make` (Linux / WSL / macOS) and `tasks.ps1` (Windows), same targets
 - ✅ Contributor docs ([`CONTRIBUTING.md`](CONTRIBUTING.md)), a security policy ([`SECURITY.md`](SECURITY.md))
       and a read-only demo tour ([`docs/demo.sh`](docs/demo.sh))
@@ -246,7 +285,7 @@ make all           # lint + test
 - **Networking**: interface & route inspection, host sweeps, endpoint health, port scanning, SSH keys.
 - **Containers & cloud**: distro-agnostic package wrapper, Docker run/clean, Jenkins install, boto3 EC2.
 - **Software engineering**: a shared library, consistent CLIs, guards, dry-run, and shellcheck hygiene.
-- **Testing & CI**: bats + pytest (177 cases) with fixtures and stubbed commands, GitHub Actions on every push, a Makefile/PowerShell task runner.
+- **Testing & CI**: bats + pytest (256 cases) with fixtures and stubbed commands, GitHub Actions on every push, a Makefile/PowerShell task runner.
 - **Process discipline**: a maintained decision log, a changelog and status/progress files; each change lands as a small, reviewable commit.
 
 </details>

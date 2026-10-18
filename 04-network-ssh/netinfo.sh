@@ -20,6 +20,8 @@ Options:
   -h, --help     show this help and exit
 
 Read-only: inspects local networking state, changes nothing.
+
+Exit status: 0 on success, 2 on a usage error.
 EOF
 }
 
@@ -79,12 +81,16 @@ show_listening() {
 }
 
 main() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -h|--help) usage; exit 0 ;;
-      *) die "unknown argument: $1 (try -h)" ;;
-    esac
-  done
+  help_requested "$@" && { usage; exit 0; }
+  if [[ "${1:-}" == "--" ]]; then
+    shift
+    [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"
+  fi
+  case "${1:-}" in
+    "") : ;;
+    -*) usage_error "unknown option: $1" ;;
+    *)  usage_error "unexpected argument: $1" ;;
+  esac
 
   show_addresses
   hr
