@@ -10,24 +10,25 @@ Subcommands:
   net         Configure a static IP on the local host (opt-in, guarded)
   all         Run: keys → authorize → connect [→ transfer] → demo [→ net]
 
-Global flags:
-  --host, --user, --port, --keyfile
+Global flags (accepted before or after the subcommand):
   --dry-run     Print intended actions without executing anything
-  --yes         Skip all y/N confirmation prompts
+  --yes         Skip the y/N confirmation before `net --apply`
   --verbose     Show DEBUG output
   --config      Path to config.toml (default: 04-network-ssh/config.toml)
+
+SSH flags: --host, --user, --port, --keyfile
+Precedence for every value: CLI flag > SSHTK_* env var > config.toml > default.
 """
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional
 
 from .network_manager import apply_static_ip
 from .payload_executor import run_demo, transfer
 from .ssh_orchestrator import connect_test, copy_id, ensure_keys
-from .utils import default_keyfile, load_toml, log, ok, resolve, setup_logging
+from .utils import confirm, default_keyfile, load_toml, log, ok, resolve, setup_logging
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -40,18 +41,21 @@ def _need(val: str, name: str) -> str:
     return val
 
 
-def _keyfile(args: argparse.Namespace) -> Path:
-    raw = getattr(args, "keyfile", None)
-    return Path(raw) if raw else default_keyfile()
+def _keyfile(args: argparse.Namespace, toml: dict) -> Path:
+    raw = resolve("keyfile", getattr(args, "keyfile", None), toml)
+    return Path(raw).expanduser() if raw else default_keyfile()
+
+
+def _port(args: argparse.Namespace, toml: dict) -> int:
+    return int(resolve("port", getattr(args, "port", None), toml) or 22)
 
 
 # ── subcommand handlers ────────────────────────────────────────────────────────
 
 def cmd_keys(args: argparse.Namespace, toml: dict) -> None:
     ensure_keys(
-        keyfile=_keyfile(args),
+        keyfile=_keyfile(args, toml),
         comment=getattr(args, "comment", ""),
-        assume_yes=args.yes,
         dry_run=args.dry_run,
     )
 
@@ -59,11 +63,10 @@ def cmd_keys(args: argparse.Namespace, toml: dict) -> None:
 def cmd_authorize(args: argparse.Namespace, toml: dict) -> None:
     host = _need(resolve("host", getattr(args, "host", None), toml, "Remote host"), "host")
     user = resolve("user", getattr(args, "user", None), toml, "Remote user") or _default_user()
-    port = int(resolve("port", getattr(args, "port", None), toml) or 22)
+    port = _port(args, toml)
     copy_id(
         host=host, user=user, port=port,
-        keyfile=_keyfile(args),
-        assume_yes=args.yes,
+        keyfile=_keyfile(args, toml),
         dry_run=args.dry_run,
     )
 
@@ -71,10 +74,10 @@ def cmd_authorize(args: argparse.Namespace, toml: dict) -> None:
 def cmd_connect(args: argparse.Namespace, toml: dict) -> None:
     host = _need(resolve("host", getattr(args, "host", None), toml, "Remote host"), "host")
     user = resolve("user", getattr(args, "user", None), toml, "Remote user") or _default_user()
-    port = int(resolve("port", getattr(args, "port", None), toml) or 22)
+    port = _port(args, toml)
     success = connect_test(
         host=host, user=user, port=port,
-        keyfile=_keyfile(args),
+        keyfile=_keyfile(args, toml),
         dry_run=args.dry_run,
     )
     if not success:
@@ -84,12 +87,12 @@ def cmd_connect(args: argparse.Namespace, toml: dict) -> None:
 def cmd_transfer(args: argparse.Namespace, toml: dict) -> None:
     host = _need(resolve("host", getattr(args, "host", None), toml, "Remote host"), "host")
     user = resolve("user", getattr(args, "user", None), toml, "Remote user") or _default_user()
-    port = int(resolve("port", getattr(args, "port", None), toml) or 22)
+    port = _port(args, toml)
     src  = _need(resolve("src",  getattr(args, "src",  None), toml, "Local file path"), "src")
     dest = resolve("dest", getattr(args, "dest", None), toml) or "~/"
     transfer(
         src=src, host=host, user=user, dest=dest, port=port,
-        keyfile=_keyfile(args),
+        keyfile=_keyfile(args, toml),
         dry_run=args.dry_run,
     )
 
@@ -97,11 +100,11 @@ def cmd_transfer(args: argparse.Namespace, toml: dict) -> None:
 def cmd_demo(args: argparse.Namespace, toml: dict) -> None:
     host = _need(resolve("host", getattr(args, "host", None), toml, "Remote host"), "host")
     user = resolve("user", getattr(args, "user", None), toml, "Remote user") or _default_user()
-    port = int(resolve("port", getattr(args, "port", None), toml) or 22)
-    remote_dir = getattr(args, "remote_dir", None) or "~/demo_ssh"
+    port = _port(args, toml)
+    remote_dir = resolve("remote_dir", getattr(args, "remote_dir", None), toml) or "~/demo_ssh"
     run_demo(
         host=host, user=user, port=port,
-        keyfile=_keyfile(args),
+        keyfile=_keyfile(args, toml),
         remote_dir=remote_dir,
         dry_run=args.dry_run,
     )
@@ -112,7 +115,19 @@ def cmd_net(args: argparse.Namespace, toml: dict) -> None:
     address   = _need(resolve("address",   getattr(args, "address",   None), toml, "Static IP address"), "address")
     netmask   = resolve("netmask",   getattr(args, "netmask",   None), toml) or "255.255.255.0"
     gateway   = _need(resolve("gateway",   getattr(args, "gateway",   None), toml, "Gateway / peer IP"), "gateway")
+
+    # D9: nothing touches a NIC without --apply, and --dry-run always wins.
     apply_flag = getattr(args, "apply", False)
+    if apply_flag and args.dry_run:
+        log.warning("--dry-run overrides --apply: the interface will not be changed")
+        apply_flag = False
+    if apply_flag and not confirm(
+        f"Apply static IP {address}/{netmask} to {interface}? "
+        "A wrong value can cut off remote access.",
+        assume_yes=args.yes,
+    ):
+        log.error("Aborted: interface left unchanged")
+        sys.exit(1)
 
     apply_static_ip(
         interface=interface,
@@ -159,15 +174,35 @@ def cmd_all(args: argparse.Namespace, toml: dict) -> None:
 
 # ── argument parser ────────────────────────────────────────────────────────────
 
+def _add_global_flags(parser: argparse.ArgumentParser, suppress: bool) -> None:
+    """Add --dry-run/--yes/--verbose/--config to *parser*.
+
+    The root parser owns the real defaults. Subcommands get SUPPRESS, so a
+    flag given before the subcommand is not reset by the subcommand's default.
+    """
+    flag_default = argparse.SUPPRESS if suppress else False
+    path_default = argparse.SUPPRESS if suppress else None
+    parser.add_argument("--dry-run", action="store_true", default=flag_default,
+                        help="Print actions without executing")
+    parser.add_argument("--yes",     action="store_true", default=flag_default,
+                        help="Skip the confirmation before net --apply")
+    parser.add_argument("--verbose", action="store_true", default=flag_default,
+                        help="Show debug output")
+    parser.add_argument("--config",  metavar="PATH", default=path_default,
+                        help="Path to config.toml")
+
+
 def _build_parser() -> argparse.ArgumentParser:
+    global_parent = argparse.ArgumentParser(add_help=False)
+    _add_global_flags(global_parent, suppress=True)
+
     # Shared SSH flags re-used by most subcommands
-    ssh_parent = argparse.ArgumentParser(add_help=False)
+    ssh_parent = argparse.ArgumentParser(add_help=False, parents=[global_parent])
     ssh_parent.add_argument("--host",    metavar="HOST",   help="Remote host IP or hostname")
     ssh_parent.add_argument("--user",    metavar="USER",   help="Remote username (default: current user)")
-    ssh_parent.add_argument("--port",    metavar="PORT",   type=int, default=22, help="SSH port (default: 22)")
+    ssh_parent.add_argument("--port",    metavar="PORT",   type=int, help="SSH port (default: 22)")
     ssh_parent.add_argument("--keyfile", metavar="PATH",   help="Private key path (default: ~/.ssh/id_ed25519)")
 
-    # Global flags on the root parser
     root = argparse.ArgumentParser(
         prog="ssh_toolkit",
         description="Cross-platform VM-to-VM SSH automation toolkit.",
@@ -190,10 +225,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "SSHTK_SRC, SSHTK_DEST, SSHTK_INTERFACE, SSHTK_ADDRESS, SSHTK_GATEWAY\n"
         ),
     )
-    root.add_argument("--dry-run",  action="store_true", help="Print actions without executing")
-    root.add_argument("--yes",      action="store_true", help="Auto-confirm all prompts")
-    root.add_argument("--verbose",  action="store_true", help="Show debug output")
-    root.add_argument("--config",   metavar="PATH",      help="Path to config.toml")
+    _add_global_flags(root, suppress=False)
 
     sub = root.add_subparsers(dest="cmd", metavar="SUBCOMMAND")
     sub.required = True
@@ -222,18 +254,18 @@ def _build_parser() -> argparse.ArgumentParser:
     # -- demo ----------------------------------------------------------------
     p_demo = sub.add_parser("demo", parents=[ssh_parent], help="Run remote mkdir/touch/tar demo")
     p_demo.add_argument(
-        "--remote-dir", dest="remote_dir", metavar="PATH", default="~/demo_ssh",
+        "--remote-dir", dest="remote_dir", metavar="PATH",
         help="Remote working directory (default: ~/demo_ssh)",
     )
 
     # -- net -----------------------------------------------------------------
     p_net = sub.add_parser(
-        "net",
+        "net", parents=[global_parent],
         help="Configure static IP (default dry-run; requires --apply + root/admin)",
     )
     p_net.add_argument("--interface", metavar="NIC",  help="Network interface, e.g. enp0s8")
     p_net.add_argument("--address",   metavar="IP",   help="Static IPv4 address")
-    p_net.add_argument("--netmask",   metavar="MASK", default="255.255.255.0")
+    p_net.add_argument("--netmask",   metavar="MASK", help="Subnet mask (default: 255.255.255.0)")
     p_net.add_argument("--gateway",   metavar="IP",   help="Peer / gateway IP for validation ping")
     p_net.add_argument(
         "--apply", action="store_true",
@@ -247,12 +279,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_all.add_argument("--src",          metavar="LOCAL",  help="Local file for optional transfer step")
     p_all.add_argument("--dest",         metavar="REMOTE", help="Remote destination for transfer")
-    p_all.add_argument("--remote-dir",   dest="remote_dir", metavar="PATH", default="~/demo_ssh")
+    p_all.add_argument("--remote-dir",   dest="remote_dir", metavar="PATH")
     p_all.add_argument("--with-network", dest="with_network", action="store_true",
                        help="Also run the 'net' static-IP step (requires --interface, --address, --gateway, --apply)")
     p_all.add_argument("--interface",    metavar="NIC",  help="For --with-network")
     p_all.add_argument("--address",      metavar="IP",   help="For --with-network")
-    p_all.add_argument("--netmask",      metavar="MASK", default="255.255.255.0")
+    p_all.add_argument("--netmask",      metavar="MASK", help="For --with-network")
     p_all.add_argument("--gateway",      metavar="IP",   help="For --with-network")
     p_all.add_argument("--apply",        action="store_true", help="For --with-network: actually apply")
 

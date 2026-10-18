@@ -5,11 +5,10 @@ import getpass
 import shutil
 import socket
 import subprocess
-import sys
 from pathlib import Path
 from typing import Optional
 
-from .utils import confirm, default_keyfile, is_windows, log, ok, pubkey_path
+from .utils import default_keyfile, is_windows, log, ok, pubkey_path
 
 
 # ── key generation ────────────────────────────────────────────────────────────
@@ -17,7 +16,6 @@ from .utils import confirm, default_keyfile, is_windows, log, ok, pubkey_path
 def ensure_keys(
     keyfile: Optional[Path] = None,
     comment: str = "",
-    assume_yes: bool = False,
     dry_run: bool = False,
 ) -> Path:
     """
@@ -89,7 +87,6 @@ def copy_id(
     user: str,
     port: int = 22,
     keyfile: Optional[Path] = None,
-    assume_yes: bool = False,
     dry_run: bool = False,
 ) -> None:
     """

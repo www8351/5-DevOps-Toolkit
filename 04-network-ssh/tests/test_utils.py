@@ -162,6 +162,13 @@ def test_confirm_reads_stdin(monkeypatch, answer, expected):
     assert utils.confirm("proceed?") is expected
 
 
+def test_confirm_treats_closed_stdin_as_no(monkeypatch):
+    def eof(prompt=""):
+        raise EOFError
+    monkeypatch.setattr("builtins.input", eof)
+    assert utils.confirm("proceed?") is False
+
+
 # ── ok() logging ──────────────────────────────────────────────────────────────
 def test_ok_emits_info_with_message(caplog):
     with caplog.at_level(logging.INFO):

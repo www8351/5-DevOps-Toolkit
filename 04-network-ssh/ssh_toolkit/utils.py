@@ -152,5 +152,9 @@ def confirm(question: str, assume_yes: bool = False) -> bool:
     if assume_yes:
         log.info("%s", question + " [auto-yes]")
         return True
-    ans = input(f"{_Y}[?]{_R} {question} [y/N] ").strip().lower()
+    try:
+        ans = input(f"{_Y}[?]{_R} {question} [y/N] ").strip().lower()
+    except EOFError:  # no terminal (cron, CI, a pipe): never assume yes
+        print()
+        return False
     return ans in ("y", "yes")
