@@ -8,6 +8,14 @@ load helper
 
 MKSWAP="$REPO_ROOT/03-system-monitor/mkswap.sh"
 
+setup() {
+  # mkswap.sh checks for these before it previews. Stubs keep the tests from
+  # depending on /usr/sbin being on a non-root PATH; swapon --show lists nothing.
+  stub mkswap
+  stub swapon ':'
+  stub fallocate
+}
+
 @test "mkswap rejects a size without a unit" {
   # A bare number meant bytes to fallocate but MiB to the dd fallback.
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 1048576 -f "$BATS_TEST_TMPDIR/s.swap"
@@ -19,6 +27,25 @@ MKSWAP="$REPO_ROOT/03-system-monitor/mkswap.sh"
   DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 0G -f "$BATS_TEST_TMPDIR/s.swap"
   [ "$status" -eq 1 ]
   [[ "$output" == *"invalid SIZE"* ]]
+}
+
+@test "mkswap rejects a size below 1M, which mkswap itself would refuse" {
+  DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 512K -f "$BATS_TEST_TMPDIR/s.swap"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"too small"* ]]
+}
+
+@test "mkswap rejects a size long enough to overflow the arithmetic" {
+  DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 18014398509481985G -f "$BATS_TEST_TMPDIR/s.swap"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid SIZE"* ]]
+}
+
+@test "mkswap refuses a dangling symlink, which root would follow" {
+  ln -s "$BATS_TEST_TMPDIR/target" "$BATS_TEST_TMPDIR/link.swap"
+  DRY_RUN=1 ASSUME_YES=1 run bash "$MKSWAP" -s 1G -f "$BATS_TEST_TMPDIR/link.swap"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refusing to overwrite"* ]]
 }
 
 @test "mkswap rejects a relative swapfile path" {
