@@ -31,8 +31,12 @@ DRY_RUN=1 ./docker-clean.sh
 sudo ./install-jenkins.sh
 
 # Validate an EC2 launch without actually creating an instance
+pip install -r requirements.txt        # boto3, for ec2-deploy.py only
 ./ec2-deploy.py --image-id ami-0abcdef1234567890 --dry-run
 ```
+
+A real `ec2-deploy.py` launch starts billing, so it asks y/N first. `--yes` or
+`ASSUME_YES=1` skips the prompt, and `DRY_RUN=1` works like `--dry-run`.
 
 Pass `-h` / `--help` to any script (or `python3 ec2-deploy.py --help`) for full options.
 

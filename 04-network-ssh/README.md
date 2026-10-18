@@ -99,14 +99,24 @@ cp config.example.toml config.toml   # config.toml is gitignored
 
 | Flag | Effect |
 |------|--------|
-| `--dry-run` | Print planned actions, touch nothing |
-| `--yes` | Auto-confirm all prompts |
+| `--dry-run` | Print planned actions, touch nothing. Always wins over `--apply` |
+| `--yes` | Skip the y/N confirmation that `--apply` asks for |
 | `--verbose` | Show DEBUG output |
-| `--apply` | (net / all --with-network) Actually modify the NIC |
+| `--apply` | (net / all --with-network) Actually modify the NIC, after a y/N prompt |
+
+Global flags work before or after the subcommand (`all --dry-run` is fine).
+Every value follows the same precedence: CLI flag, then `SSHTK_*` env var, then
+`config.toml`, then the built-in default.
+
+Host keys: native `ssh`/`scp` use `StrictHostKeyChecking=accept-new`. The
+paramiko fallback loads `~/.ssh/known_hosts` first, so a changed host key is
+rejected and an unknown host is accepted, the same behaviour.
 
 ### Static IP configuration (`net` subcommand)
 
-**Default: dry-run.** Requires `--apply` to write changes.
+**Default: dry-run.** Requires `--apply` to write changes, then asks y/N
+(`--yes` skips the prompt). `--dry-run` always wins over `--apply`. The
+interface name, addresses and netmask are validated before anything runs.
 
 Auto-detects the Linux network stack (Netplan → nmcli → `/etc/network/interfaces`).
 Creates a **timestamped backup** before touching any file.
