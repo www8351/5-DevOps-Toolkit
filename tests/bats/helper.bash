@@ -11,3 +11,15 @@ export REPO_ROOT
 export NO_COLOR=1   # common.sh -> empty colour palette -> exact, stable strings
 
 export COMMON="$REPO_ROOT/lib/common.sh"   # must be exported: child `bash -c` reads it
+
+# stub NAME [BODY] — put a fake NAME first on PATH for this test. Without a
+# BODY the fake just echoes "stub:NAME <args>" so a test can assert the call.
+stub() {
+  local name="$1" body="${2:-}"
+  local dir="$BATS_TEST_TMPDIR/stubs"
+  mkdir -p "$dir"
+  [[ -n "$body" ]] || body="echo \"stub:$name \$*\""
+  printf '#!/usr/bin/env bash\n%s\n' "$body" >"$dir/$name"
+  chmod +x "$dir/$name"
+  [[ ":$PATH:" == *":$dir:"* ]] || export PATH="$dir:$PATH"
+}

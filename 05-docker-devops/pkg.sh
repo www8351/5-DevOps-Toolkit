@@ -20,7 +20,7 @@ Subcommands:
   install PKG...   install one or more packages   (root + confirm)
   upgrade          upgrade all installed packages  (root + confirm)
   remove PKG...    remove one or more packages     (root + confirm)
-  update           refresh the package index       (read-only)
+  update           refresh the package index       (root with apt-get)
   search TERM      search the repositories         (read-only)
 
 Options:
@@ -103,7 +103,7 @@ main() {
     update)
       [[ $# -eq 0 ]] || die "update takes no arguments"
       case "$pm" in
-        apt-get) run "$pm" update ;;
+        apt-get) require_root; run "$pm" update ;;
         dnf)     run "$pm" check-update || true ;;
         yum)     run "$pm" check-update || true ;;
       esac
@@ -111,7 +111,12 @@ main() {
       ;;
     search)
       [[ $# -eq 1 ]] || die "search requires exactly one term"
-      run "$pm" search "$1"
+      # Read-only, so it bypasses `run` and still works under DRY_RUN=1.
+      # apt-get has no search command; apt-cache does.
+      case "$pm" in
+        apt-get) need_cmd apt-cache; apt-cache search "$1" ;;
+        dnf|yum) "$pm" search "$1" ;;
+      esac
       ;;
     *)
       die "unknown subcommand: $sub (try --help)"
