@@ -4,8 +4,8 @@
 # and print its own name in the usage text — WITHOUT requiring its runtime
 # dependencies (help must work before any need_cmd guard).
 #
-# Helpers excluded: name_echo.sh (interactive demo) and setup.sh (venv
-# bootstrapper) are not "tools" and intentionally have no -h.
+# Excluded: setup.sh, the venv bootstrapper, which forwards every argument
+# (help included) to the Python package after building the venv.
 
 load helper
 
@@ -15,7 +15,7 @@ load helper
   while IFS= read -r script; do
     base="$(basename "$script")"
     case "$base" in
-      name_echo.sh|setup.sh) continue ;;
+      setup.sh) continue ;;
     esac
 
     for flag in -h --help; do
@@ -57,7 +57,7 @@ load helper
 # The tool scripts the CLI contract applies to (helpers excluded, as above).
 tool_scripts() {
   find "$REPO_ROOT" -name '*.sh' -not -path '*/lib/*' -not -path '*/.git/*' \
-    -not -path '*/.venv/*' -not -name name_echo.sh -not -name setup.sh | sort
+    -not -path '*/.venv/*' -not -name setup.sh | sort
 }
 
 @test "every tool rejects an unknown option with exit 2 (D22)" {

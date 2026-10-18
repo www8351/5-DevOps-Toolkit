@@ -116,3 +116,11 @@ esac'
   [ "$status" -eq 0 ]
   [[ "$output" == *"stub:ssh-keygen -t ed25519 -f $HOME/.ssh/k"* ]]
 }
+
+@test "name_echo repeats the name N times and validates N" {
+  run bash "$REPO_ROOT/04-network-ssh/name_echo.sh" 3 <<< "bob"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'bob bob bob$' <<<"$output")" -eq 3 ]
+  run bash "$REPO_ROOT/04-network-ssh/name_echo.sh" many </dev/null
+  [ "$status" -eq 2 ]
+}

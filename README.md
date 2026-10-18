@@ -154,10 +154,9 @@ The Python tools follow the same rules: `ssh_toolkit net` changes nothing withou
 first, and `ec2-deploy.py` asks before a billed launch. See [`SECURITY.md`](SECURITY.md) for safe use
 and how to report a problem.
 
-> Two files in `04-network-ssh/` are helpers rather than tools and are exempt from the `-h`
-> contract on purpose: `name_echo.sh` (an interactive demo) and `setup.sh` (a venv
-> bootstrapper for `ssh_toolkit`). The bats smoke test skips exactly those two and enforces the
-> contract on everything else.
+> One file is exempt from the help contract on purpose: `04-network-ssh/setup.sh`, the venv
+> bootstrapper for `ssh_toolkit`, which forwards every argument (help included) to the Python
+> package. The bats contract tests skip exactly that file and enforce the rules on everything else.
 
 ---
 
