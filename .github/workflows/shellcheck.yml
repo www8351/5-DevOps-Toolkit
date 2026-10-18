@@ -5,14 +5,21 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to the same branch or PR cancels the run it replaces.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
     name: shellcheck + bash -n
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +32,7 @@ jobs:
           exit $fail
 
       - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@2.0.0
         env:
           # SC1091: don't try to follow `source lib/common.sh` (resolved at runtime).
           SHELLCHECK_OPTS: -e SC1091
@@ -34,8 +41,9 @@ jobs:
           scandir: '.'
 
   bats:
-    name: bats (common.sh + help smoke)
+    name: bats (common.sh, help contract, tool behaviour)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +56,7 @@ jobs:
   makefile:
     name: makefile (parse + targets)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
