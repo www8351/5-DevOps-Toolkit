@@ -3,7 +3,7 @@
 # pingsweep.sh — ping a list of hosts and print an up/down table
 #   commands showcased: ping -c1 -W1
 #
-# Usage: ./pingsweep.sh [--json] <host> [host...]  | -f FILE
+# Usage: ./pingsweep.sh [--json] <host> [host...]
 #        ./pingsweep.sh -f <file>
 #
 set -euo pipefail

@@ -7,6 +7,57 @@ the matching section below as a GitHub release.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-18
+
+One command-line contract for every tool. Nothing is removed: renamed flags
+keep working with a warning until 2.0.0.
+
+### Added
+- Every flag has a long form, and `-h`/`--help` works anywhere on the line.
+- `--dry-run` and `--yes` on every tool that changes the system, as flag forms
+  of `DRY_RUN=1` and `ASSUME_YES=1`. Unlike the variables, the flags survive
+  `sudo`.
+- `--json` for the four monitors (`diskwatch`, `memwatch`, `httpcheck`,
+  `pingsweep`): one JSON document on stdout with an `ok` field and one record
+  per filesystem, URL or host.
+- `memwatch -w/--warn PERCENT`, which exits 1 when RAM use reaches it.
+- `ssh_toolkit` honours `DRY_RUN=1` and `ASSUME_YES=1` like the other tools.
+- `lib/common.sh`: `usage_error`, `need_arg`, `help_requested`, `deprecated`,
+  `confirm_or_abort`, `c_fail`, `json_str`, `json_num`.
+- Contract tests that every tool exits 2 on an unknown option and shows help
+  when `--help` comes after another argument.
+
+### Changed
+- Exit codes are the same everywhere: 0 success, 1 problem found, failed
+  operation or declined prompt, 2 usage error. Before, usage errors exited 1.
+- Declining a prompt exits 1 in every tool. `backup --extract`, `docker-clean`,
+  `docker-run-web`, `install-jenkins`, `pkg` and `sshkey` (copy step) used to
+  exit 0.
+- `pingsweep` exits 1 when a host is down.
+- Failed result rows (`diskwatch`, `httpcheck`, `pingsweep`) go to stdout with
+  the healthy ones. Prompts go to stderr.
+- Stray arguments are an error (exit 2). `grant-sudo`, `newuser`, `memwatch`,
+  `topproc` and `diskwatch` used to ignore them.
+- Bundled short options (`-an 5`) and attached values (`-n5`) are no longer
+  parsed. Pass each flag separately.
+
+### Deprecated
+These still work, print a warning, and will be removed in 2.0.0:
+- `logtop -f FIELD`: use `-k`/`--field`.
+- `logtop -p PATTERN`: use `-g`/`--grep`.
+- `diskwatch -t PERCENT`: use `-w`/`--warn`.
+- `docker-clean -f`: use `-a`/`--all`.
+- `docker-run-web -n NAME`: use `--name`.
+- `newuser -s SHELL`, `-d HOME`, `-N`: use `--shell`, `--home`,
+  `--no-user-group`.
+- `sshkey -c USER@HOST`: use `--copy-to`.
+
+### Fixed
+- `pkg.sh install -h` tried to install a package named `-h`.
+- `sshkey --yes` hung on ssh-keygen's own overwrite prompt when the key
+  already existed.
+- A dry run of `sshkey` no longer prints "keypair generated".
+
 ## [1.0.0] - 2026-10-18
 
 First tagged release.
@@ -64,5 +115,6 @@ First tagged release.
 - `ec2-deploy.py` asks before a real, billed launch.
 - CI actions and dev tools are pinned.
 
-[Unreleased]: https://github.com/www8351/5-DevOps-Toolkit/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/www8351/5-DevOps-Toolkit/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/www8351/5-DevOps-Toolkit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/www8351/5-DevOps-Toolkit/releases/tag/v1.0.0

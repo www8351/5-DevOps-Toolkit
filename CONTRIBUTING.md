@@ -37,13 +37,42 @@ Every tool script **must**:
    ```bash
    source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"
    ```
-3. Provide a `usage()` and handle `-h`/`--help` **before** any `need_cmd` guard, so
-   help works without the tool's dependencies. (`tests/bats/help_smoke.bats` enforces
-   this; see [DECISIONS.md](DECISIONS.md) D13.)
-4. Guard destructive/root actions with `require_root` + `confirm`, and route side
-   effects through `run` so `DRY_RUN=1` and `ASSUME_YES=1` work.
-5. Be shellcheck-clean (`-e SC1091` is the only allowed exception: the runtime
+3. Provide a `usage()` and parse arguments with the shared shape below. Help must work
+   **before** any `need_cmd` guard, so it works without the tool's dependencies.
+   (`tests/bats/help_smoke.bats` enforces this; see [DECISIONS.md](DECISIONS.md) D13, D22.)
+4. Guard destructive/root actions with `require_root` + `confirm_or_abort`, and route side
+   effects through `run` so `--dry-run`/`DRY_RUN=1` and `--yes`/`ASSUME_YES=1` work.
+5. Follow the command-line conventions in the root README: one meaning per flag letter,
+   a long form for every flag, exit 0/1/2, results on stdout and everything else on stderr.
+6. Be shellcheck-clean (`-e SC1091` is the only allowed exception: the runtime
    `source`).
+
+The parser shape every tool uses:
+
+```bash
+main() {
+  help_requested "$@" && { usage; exit 0; }
+
+  local top=10
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--top)  need_arg "$@"; top="$2"; shift 2 ;;
+      --dry-run) export DRY_RUN=1; shift ;;      # only in tools that change the system
+      --yes)     export ASSUME_YES=1; shift ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;    # exit 2
+      *)  args+=("$1"); shift ;;
+    esac
+  done
+  [[ "${#args[@]}" -le 1 ]] || usage_error "expected at most one PATH"
+  [[ "$top" =~ ^[1-9][0-9]*$ ]] || usage_error "--top must be a positive integer"
+  # ... die "..." (exit 1) for problems in the world, such as a missing file
+}
+```
+
+Renaming a flag? Keep the old spelling working with `deprecated OLD NEW` (D23) and list it
+under "Deprecated" in `CHANGELOG.md`.
 
 ## Adding a tool
 
