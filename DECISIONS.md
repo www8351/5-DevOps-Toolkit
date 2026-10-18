@@ -241,3 +241,44 @@ auto-tagging from CI (a release should be a decision, not a side effect); genera
 messages (too granular for readers).
 **Status:** Final.
 
+---
+
+### D22: One command-line contract for every tool
+**Decision:** Every tool parses its arguments with one `while/case` loop built on `lib/common.sh`:
+- `help_requested` makes `-h/--help` work anywhere before `--`; `--` ends the options.
+- Every short flag has a long form. A letter means the same thing in every tool: `-n` a row count
+  (`--top`, or `--limit`/`--lines` where nothing is ranked), `-f/--file` a file, `-p/--port(s)` a port,
+  `-t/--timeout` a timeout, `-s/--size` a size, `-w/--warn` an alert threshold, `-a/--all` "include
+  everything", `-u/--user` a user. A meaning used by one tool only gets a long flag only.
+- Tools that change the system accept `--dry-run` and `--yes`, the flag forms of `DRY_RUN=1` and
+  `ASSUME_YES=1` (a flag also survives `sudo`, which drops environment variables).
+- Exit codes: 0 success; 1 a problem found, a failed operation, or a declined prompt; 2 a usage error.
+  Usage error = the command line itself is wrong (unknown flag, missing value, malformed number or path,
+  wrong argument count). Something wrong in the world (missing file, not root, dependency absent) is 1.
+  Report tools (`audit-perms`, `bigfiles`, ...) exit 0 on a completed report; check tools (`diskwatch`,
+  `httpcheck`, and in Phase 12 `pingsweep`, `memwatch --warn`) exit 1 when they find a problem.
+- Results go to stdout; warnings, errors and the `confirm` question go to stderr.
+`tests/bats/help_smoke.bats` enforces the help, exit-2 and executable-bit parts for every tool.
+**Why:** The audit found four parser styles, `--help` that only worked as the first argument in seven
+tools, one letter with up to five meanings, usage errors indistinguishable from "problem found", and a
+declined prompt exiting 0 in six tools and 1 in eight. A toolkit that claims consistency has to be
+consistent where a user touches it first: the command line.
+**Rejected:** getopts everywhere (no long options, `--help` needs a shim); a full option-parsing library
+(a dependency for 25 small scripts); `--opt=value` syntax (more parser code for little gain).
+**Note:** Bundled short options (`-an 5`) and attached values (`-n5`) are no longer parsed.
+**Status:** Final.
+
+---
+
+### D23: Renamed flags keep working as deprecated aliases until 2.0.0
+**Decision:** When D22 renames a flag, the old spelling keeps its meaning, calls `deprecated OLD NEW` (a
+warning on stderr naming the replacement and the removal version), and is listed under "Deprecated" in
+the tool's help and in `CHANGELOG.md`. Aliases are removed together in the next major version. Renamed in
+1.1.0: `logtop -f/-p`, `diskwatch -t`, `docker-clean -f`, `docker-run-web -n`, `newuser -s/-d/-N`,
+`sshkey -c`.
+**Why:** The owner's call: existing scripts and muscle memory keep working, and the warning teaches the new
+name at the moment it matters. Bundling a clean break with the interface work would have forced 2.0.0
+immediately.
+**Rejected:** A clean break (version 2.0.0 now); silent aliases (nobody would ever migrate).
+**Status:** Final.
+
