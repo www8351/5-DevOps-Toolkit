@@ -3,7 +3,7 @@
 # logtop.sh — top talkers in a log: most frequent value of a chosen field/word
 #   commands showcased: grep, awk, sort, uniq, wc
 #
-# Usage: ./logtop.sh [-f FIELD] [-d DELIM] [-n N] [-p PATTERN] FILE
+# Usage: ./logtop.sh [-k FIELD] [-d DELIM] [-n N] [-g PATTERN] FILE
 #
 set -euo pipefail
 
@@ -20,48 +20,45 @@ Arguments:
   FILE           log file to analyse (required)
 
 Options:
-  -f FIELD       awk field number to count (default: 1)
-  -d DELIM       field delimiter passed to awk -F (default: whitespace)
-  -n N           show only the top N results (default: 10)
-  -p PATTERN     grep pre-filter; only lines matching PATTERN are counted
-  -h, --help     show this help and exit
+  -k, --field N      awk field number to count (default: 1)
+  -d, --delim DELIM  field delimiter passed to awk -F (default: whitespace)
+  -n, --top N        show only the top N results (default: 10)
+  -g, --grep PATTERN grep pre-filter; only lines matching PATTERN are counted
+  -h, --help         show this help and exit
+
+Deprecated (still work, removed in 2.0.0): -f FIELD (use -k), -p PATTERN (use -g).
+
+Exit status: 0 on success, 1 if FILE cannot be read, 2 on a usage error.
 
 Read-only: this script never modifies anything.
 EOF
 }
 
 main() {
-  local field=1
-  local delim=""
-  local top=10
-  local pattern=""
+  help_requested "$@" && { usage; exit 0; }
 
-  if [[ "${1:-}" == "--help" ]]; then
-    usage
-    exit 0
-  fi
-
-  local opt
-  while getopts ":f:d:n:p:h" opt; do
-    case "$opt" in
-      f) field="$OPTARG" ;;
-      d) delim="$OPTARG" ;;
-      n) top="$OPTARG" ;;
-      p) pattern="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG (see -h)" ;;
+  local field=1 delim="" top=10 pattern=""
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -k|--field) need_arg "$@"; field="$2"; shift 2 ;;
+      -f)         deprecated -f -k/--field; need_arg "$@"; field="$2"; shift 2 ;;
+      -d|--delim) need_arg "$@"; delim="$2"; shift 2 ;;
+      -n|--top)   need_arg "$@"; top="$2"; shift 2 ;;
+      -g|--grep)  need_arg "$@"; pattern="$2"; shift 2 ;;
+      -p)         deprecated -p -g/--grep; need_arg "$@"; pattern="$2"; shift 2 ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  shift "$((OPTIND - 1))"
 
-  local file="${1:-}"
-  [[ -n "$file" ]] || { usage; die "FILE argument is required"; }
+  [[ "${#args[@]}" -eq 1 ]] || usage_error "expected exactly one FILE (got ${#args[@]} arguments)"
+  [[ "$field" =~ ^[1-9][0-9]*$ ]] || usage_error "--field must be a positive integer (got '$field')"
+  [[ "$top" =~ ^[1-9][0-9]*$ ]] || usage_error "--top must be a positive integer (got '$top')"
+  local file="${args[0]}"
   [[ -f "$file" ]] || die "not a regular file: $file"
   [[ -r "$file" ]] || die "file is not readable: $file"
-
-  [[ "$field" =~ ^[0-9]+$ && "$field" -gt 0 ]] || die "-f must be a positive integer (got '$field')"
-  [[ "$top" =~ ^[0-9]+$ && "$top" -gt 0 ]] || die "-n must be a positive integer (got '$top')"
 
   need_cmd awk
   need_cmd sort

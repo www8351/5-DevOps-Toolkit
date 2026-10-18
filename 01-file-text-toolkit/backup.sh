@@ -3,7 +3,7 @@
 # backup.sh — timestamped tar.bz2 backup of a directory, plus an extract mode
 #   commands showcased: tar -cjvf, tar -xjvf -C, du, date
 #
-# Usage: ./backup.sh SRC [DEST_DIR]
+# Usage: ./backup.sh [--dry-run] [--yes] SRC [DEST_DIR] | --extract ARCHIVE TARGET_DIR
 #        ./backup.sh --extract ARCHIVE TARGET_DIR
 #
 set -euo pipefail
@@ -16,14 +16,19 @@ usage() {
 backup.sh — timestamped tar.bz2 backup of a directory, plus an extract mode
 
 Usage:
-  $0 SRC [DEST_DIR]               create DEST_DIR/<basename>-<timestamp>.tar.bz2
-  $0 --extract ARCHIVE TARGET_DIR extract ARCHIVE into TARGET_DIR
+  $0 [options] SRC [DEST_DIR]               create DEST_DIR/<basename>-<timestamp>.tar.bz2
+  $0 [options] --extract ARCHIVE TARGET_DIR extract ARCHIVE into TARGET_DIR
 
 Options:
+  --extract      extract ARCHIVE into TARGET_DIR instead of creating a backup
+  --dry-run      print the tar command instead of running it (same as DRY_RUN=1)
+  --yes          skip the confirmation prompts (same as ASSUME_YES=1)
   -h, --help     show this help and exit
 
-Backup mode is non-destructive. Extract mode asks for confirmation and honours
-DRY_RUN=1 (print only) and ASSUME_YES=1 (skip the prompt).
+Backup mode is non-destructive. Extract mode asks for confirmation first.
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
@@ -78,12 +83,12 @@ do_extract() {
 
   # Ensure the target directory exists (its creation is itself state-changing).
   if [[ ! -d "$target" ]]; then
-    confirm "Target '$target' does not exist. Create it?" || die "aborted by user"
+    confirm_or_abort "Target '$target' does not exist. Create it?"
     run mkdir -p -- "$target"
   fi
 
   # Extraction overwrites files in the target, so confirm before mutating.
-  confirm "Extract '$archive' into '$target'?" || { c_warn "Extraction cancelled"; return 0; }
+  confirm_or_abort "Extract '$archive' into '$target'?"
   run tar -xjvf "$archive" -C "$target"
 
   if [[ "${DRY_RUN:-0}" == "1" ]]; then
@@ -96,28 +101,28 @@ do_extract() {
 }
 
 main() {
-  case "${1:-}" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    --extract)
-      shift
-      local archive="${1:-}"
-      local target="${2:-}"
-      [[ -n "$archive" && -n "$target" ]] || { usage; die "--extract requires ARCHIVE and TARGET_DIR"; }
-      do_extract "$archive" "$target"
-      ;;
-    "")
-      usage
-      die "SRC argument is required"
-      ;;
-    *)
-      local src="$1"
-      local dest="${2:-.}"
-      do_backup "$src" "$dest"
-      ;;
-  esac
+  help_requested "$@" && { usage; exit 0; }
+
+  local extract=0
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --extract) extract=1; shift ;;
+      --dry-run) export DRY_RUN=1; shift ;;
+      --yes)     export ASSUME_YES=1; shift ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+
+  if [[ "$extract" -eq 1 ]]; then
+    [[ "${#args[@]}" -eq 2 ]] || usage_error "--extract needs ARCHIVE and TARGET_DIR"
+    do_extract "${args[0]}" "${args[1]}"
+  else
+    [[ "${#args[@]}" -ge 1 && "${#args[@]}" -le 2 ]] || usage_error "expected SRC [DEST_DIR]"
+    do_backup "${args[0]}" "${args[1]:-.}"
+  fi
 }
 
 main "$@"

@@ -20,9 +20,12 @@ Arguments:
   PATH           directory to search (default: current directory)
 
 Options:
-  -n N           show only the top N files (default: 15)
-  -s MINSIZE     only consider files matching find -size MINSIZE (e.g. +10M)
-  -h, --help     show this help and exit
+  -n, --top N          show only the top N files (default: 15)
+  -s, --size MINSIZE   only consider files matching find -size MINSIZE (e.g. +10M)
+  -h, --help           show this help and exit
+
+Exit status: 0 on success (also when nothing matches), 1 if PATH is not a
+directory, 2 on a usage error.
 
 Read-only: this script never modifies anything.
 EOF
@@ -47,29 +50,23 @@ humanize() {
 }
 
 main() {
-  local top=15
-  local minsize=""
+  help_requested "$@" && { usage; exit 0; }
 
-  if [[ "${1:-}" == "--help" ]]; then
-    usage
-    exit 0
-  fi
-
-  local opt
-  while getopts ":n:s:h" opt; do
-    case "$opt" in
-      n) top="$OPTARG" ;;
-      s) minsize="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG (see -h)" ;;
+  local top=15 minsize=""
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--top)  need_arg "$@"; top="$2"; shift 2 ;;
+      -s|--size) need_arg "$@"; minsize="$2"; shift 2 ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  shift "$((OPTIND - 1))"
 
-  local target="${1:-.}"
-
-  [[ "$top" =~ ^[0-9]+$ && "$top" -gt 0 ]] || die "-n must be a positive integer (got '$top')"
+  [[ "${#args[@]}" -le 1 ]] || usage_error "expected at most one PATH (got ${#args[@]} arguments)"
+  [[ "$top" =~ ^[1-9][0-9]*$ ]] || usage_error "--top must be a positive integer (got '$top')"
+  local target="${args[0]:-.}"
   [[ -d "$target" ]] || die "not a directory: $target"
 
   need_cmd find

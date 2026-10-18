@@ -20,37 +20,34 @@ Arguments:
   FILE           text file to inspect (required)
 
 Options:
-  -n N           number of preview lines for head and tail (default: 5)
+  -n, --lines N  number of preview lines for head and tail (default: 5)
   -h, --help     show this help and exit
+
+Exit status: 0 on success, 1 if FILE cannot be read, 2 on a usage error.
 
 Read-only: this script never modifies anything.
 EOF
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
+
   local preview=5
-
-  if [[ "${1:-}" == "--help" ]]; then
-    usage
-    exit 0
-  fi
-
-  local opt
-  while getopts ":n:h" opt; do
-    case "$opt" in
-      n) preview="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG (see -h)" ;;
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--lines) need_arg "$@"; preview="$2"; shift 2 ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  shift "$((OPTIND - 1))"
 
-  local file="${1:-}"
-  [[ -n "$file" ]] || { usage; die "FILE argument is required"; }
+  [[ "${#args[@]}" -eq 1 ]] || usage_error "expected exactly one FILE (got ${#args[@]} arguments)"
+  [[ "$preview" =~ ^[1-9][0-9]*$ ]] || usage_error "--lines must be a positive integer (got '$preview')"
+  local file="${args[0]}"
   [[ -f "$file" ]] || die "not a regular file: $file"
   [[ -r "$file" ]] || die "file is not readable: $file"
-  [[ "$preview" =~ ^[0-9]+$ && "$preview" -gt 0 ]] || die "-n must be a positive integer (got '$preview')"
 
   need_cmd wc
   need_cmd head

@@ -20,39 +20,34 @@ Arguments:
   PATH           directory to inspect (default: current directory)
 
 Options:
-  -n N           show only the top N subdirectories (default: 10)
-  -a             include hidden subdirectories (names starting with '.')
+  -n, --top N    show only the top N subdirectories (default: 10)
+  -a, --all      include hidden subdirectories (names starting with '.')
   -h, --help     show this help and exit
+
+Exit status: 0 on success, 1 if PATH is not a directory, 2 on a usage error.
 
 Read-only: this script never modifies anything.
 EOF
 }
 
 main() {
-  local top=10
-  local include_hidden=0
+  help_requested "$@" && { usage; exit 0; }
 
-  # Support long help flag before getopts.
-  if [[ "${1:-}" == "--help" ]]; then
-    usage
-    exit 0
-  fi
-
-  local opt
-  while getopts ":n:ah" opt; do
-    case "$opt" in
-      n) top="$OPTARG" ;;
-      a) include_hidden=1 ;;
-      h) usage; exit 0 ;;
-      :) die "option -$OPTARG requires an argument" ;;
-      \?) die "unknown option: -$OPTARG (see -h)" ;;
+  local top=10 include_hidden=0
+  local -a args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--top) need_arg "$@"; top="$2"; shift 2 ;;
+      -a|--all) include_hidden=1; shift ;;
+      --) shift; args+=("$@"); break ;;
+      -*) usage_error "unknown option: $1" ;;
+      *) args+=("$1"); shift ;;
     esac
   done
-  shift "$((OPTIND - 1))"
 
-  local target="${1:-.}"
-
-  [[ "$top" =~ ^[0-9]+$ && "$top" -gt 0 ]] || die "-n must be a positive integer (got '$top')"
+  [[ "${#args[@]}" -le 1 ]] || usage_error "expected at most one PATH (got ${#args[@]} arguments)"
+  [[ "$top" =~ ^[1-9][0-9]*$ ]] || usage_error "--top must be a positive integer (got '$top')"
+  local target="${args[0]:-.}"
   [[ -d "$target" ]] || die "not a directory: $target"
 
   need_cmd du
