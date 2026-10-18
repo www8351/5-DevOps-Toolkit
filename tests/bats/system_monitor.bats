@@ -105,3 +105,33 @@ echo "$s:           200          50         150"'
   [[ "$output" == *"RAM used:  25.0%"* ]]
   [[ "$output" == *"Swap used: 25.0%"* ]]
 }
+
+# A fake df -hP: a real disk, a mount point with a space, and pseudo or
+# read-only image mounts that always sit at 100% and must never alarm.
+FAKE_DF='echo "Filesystem      Size  Used Avail Use% Mounted on"
+echo "/dev/sda1        50G   20G   30G  40% /"
+echo "/dev/sdb1       100G   95G    5G  95% /mnt/my disk"
+echo "tmpfs           1.0G  1.0G     0 100% /run"
+echo "/dev/loop3       64M   64M     0 100% /snap/core22/1234"'
+
+@test "diskwatch flags a full disk and exits 1" {
+  stub df "$FAKE_DF"
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 90
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"/mnt/my disk"*"95%"* ]]
+}
+
+@test "diskwatch ignores tmpfs and snap loop mounts that are always full" {
+  stub df "$FAKE_DF"
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 99
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"/run"* ]]
+  [[ "$output" != *"/snap/"* ]]
+  [[ "$output" == *"all filesystems are below 99%"* ]]
+}
+
+@test "diskwatch rejects a threshold outside 1-100" {
+  run bash "$REPO_ROOT/03-system-monitor/diskwatch.sh" -t 101
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"threshold must be"* ]]
+}
