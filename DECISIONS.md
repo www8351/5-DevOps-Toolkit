@@ -225,3 +225,19 @@ opinions, so the gate stays a correctness signal.
 **Rejected:** A broad ruleset now (142 findings, mostly line length and typing style: noise for this repo).
 **Status:** Final; the next step, if ever, is a ruff config file with an explicit ruleset.
 
+---
+
+### D21: Releases are tag-driven, notes come from CHANGELOG.md, the owner pushes the tag
+**Decision:** `CHANGELOG.md` (Keep a Changelog, SemVer) is the single source of release notes. Pushing a
+`vX.Y.Z` tag runs `.github/workflows/release.yml`, which publishes that version's section as a GitHub
+release with the runner's `gh` CLI and fails if the section is missing. The first tag is `v1.0.0`, pushed by
+the owner on `main` after this wave merges. Dev tools (`pytest`, `ruff`) and CI actions are pinned, and
+Dependabot proposes upgrades.
+**Why:** The repo had no versions, so "what changed" lived only in the git log and in these lifecycle files.
+A tag plus a curated changelog is what a reader expects from a maintained project, and it keeps the release
+a deliberate human step.
+**Rejected:** A third-party release action (one more pinned dependency for what `gh release create` does);
+auto-tagging from CI (a release should be a decision, not a side effect); generating notes from commit
+messages (too granular for readers).
+**Status:** Final.
+

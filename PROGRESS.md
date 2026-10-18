@@ -4,6 +4,33 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18: Phase 8, repo hygiene and release
+
+**Goal:** The signals of a maintained project: pinned dependencies, a version, a changelog, a release path.
+
+**What was done**
+- CI: `ludeeus/action-shellcheck@master` pinned to `2.0.0`; the lint job installs the pinned
+  `requirements-dev.txt` (`pytest==9.1.1`, `ruff==0.17.1`, `tomli` below 3.11) instead of an unpinned ruff;
+  `timeout-minutes` on every job; `concurrency` with cancel-in-progress; `workflow_dispatch`.
+- pytest matrix on Python 3.10 and 3.14. The documented and enforced floor moved from 3.8 (never tested;
+  past end of life) to 3.10.
+- `.github/dependabot.yml`: weekly updates for actions and pip (`/`, `/04-network-ssh`, `/05-docker-devops`).
+- `CHANGELOG.md` with a 1.0.0 entry; `.github/workflows/release.yml` publishes the section for a pushed
+  `vX.Y.Z` tag via `gh release create`; `SECURITY.md` (private reporting, safe-use rules). D21 recorded.
+
+**What was tried / found**
+- actionlint flagged the existing `$(find ...)` and unquoted target lists in `python.yml`; py_compile now
+  uses `find -exec`, the intended splitting is annotated.
+- The first awk extraction for release notes ran past the 1.0.0 section into the link references at the
+  bottom of the changelog; it now stops there. Tested with the exact workflow snippet: 56 lines for 1.0.0,
+  empty (so the job fails) for an unknown version.
+
+**Verification**
+- pytest 103/103 on Python 3.10 and 3.14 (uv-managed interpreters); `make all` clean; actionlint clean on
+  all three workflows; YAML of `dependabot.yml` parses.
+- Not verifiable here: the release workflow itself runs only on a pushed tag (owner step), and private
+  vulnerability reporting must be switched on in the repository settings.
+
 ## 2026-10-18: Phase 7, shell behaviour tests
 
 **Goal:** Grow the test count with tests of real behaviour, not only `-h`, and fix what they find.
