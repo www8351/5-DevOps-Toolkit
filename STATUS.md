@@ -3,11 +3,11 @@
 _Last updated: 2026-10-18 (evening)_
 
 ## Where the project stands
-**2026-10-18 (evening): interface-consistency wave in progress (Phases 10 to 13, version 1.1.0).** The
+**2026-10-18 (evening): interface-consistency wave complete (Phases 10 to 13, version 1.1.0).** The
 polish wave (Phases 5 to 9) merged as PR #3. The owner chose this wave and its three rules: renamed flags
-stay as warned aliases (D23), JSON output for the four monitors only, exit codes 0/1/2 (D22). **Phases 10
-(shared CLI layer) and 11 (every tool migrated) are done** on branch `ccr-dec6d5a6-417b42`, restarted from
-`main`: 128 bats + 103 pytest, `make all` clean.
+stay as warned aliases (D23), JSON for the four monitors only (D24), exit codes 0/1/2 (D22). All four
+phases plus the review fixes are on branch `ccr-dec6d5a6-417b42` (restarted from `main`): 147 bats +
+109 pytest = 256 tests, `make all` clean.
 
 **2026-10-18: portfolio polish wave in progress (Phases 5 to 9).** The plan fixes what a reviewer
 would hit in the first five minutes, then hardens the Python, widens the tests, adds release
@@ -71,6 +71,16 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 - [x] `docs/DEMO.md` — asciinema/agg recording instructions (recording is a user step — can't be automated).
 - [x] `CONTRIBUTING.md` — setup, checks, tool contract, add-a-tool checklist.
 - [x] README layout tree expanded (tests/docs/CI/task-runner); all 5 CI jobs still green.
+
+## Done (added 2026-10-18 evening), Phases 12 and 13 plus review fixes
+- [x] `--json` for `diskwatch`, `memwatch`, `httpcheck`, `pingsweep` (D24); `memwatch -w/--warn`; `pingsweep`
+      exits 1 on a down host; failing rows on stdout; `json_num` helper.
+- [x] `ssh_toolkit` honours `DRY_RUN=1` / `ASSUME_YES=1`.
+- [x] README "Command-line conventions" section; CONTRIBUTING parser template; CHANGELOG 1.1.0; module READMEs.
+- [x] Review fixes: `pkg` passes package-manager options through again; `sshkey` keeps the old key until the
+      new one exists; `--` accepted by every tool; empty option values rejected; `memwatch --warn` compares
+      exact bytes; `json_num` rejects leading zeros; `name_echo.sh` now follows the contract (only
+      `setup.sh` stays exempt).
 
 ## Done (added 2026-10-18 evening), Phases 10 and 11: uniform interface
 - [x] `lib/common.sh`: `usage_error` (exit 2), `need_arg`, `help_requested`, `deprecated`, `confirm_or_abort`,
@@ -139,12 +149,11 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 - [x] Repo-name mismatch resolved — canonical name is `5-DevOps-Toolkit` (the remote); all docs aligned (D16).
 
 ## Next best action
-1. Phase 12: `--json` for `diskwatch`, `memwatch`, `httpcheck`, `pingsweep`; `memwatch --warn`; `pingsweep`
-   exit 1 on a down host; failing rows on stdout.
-2. Phase 13: `ssh_toolkit` reads `DRY_RUN`/`ASSUME_YES`; README conventions section; CHANGELOG 1.1.0.
-3. Owner (still open from the last wave): tag `v1.0.0` on the PR #3 merge commit
-   (`git tag -a v1.0.0 fb5a34d -m v1.0.0 && git push origin v1.0.0`), enable private vulnerability
-   reporting, fix the repo description (25 tools), record the demo, run the live-VM checks.
+1. Owner: review and merge the 1.1.0 PR. Then tag both releases in order:
+   `git tag -a v1.0.0 fb5a34d -m v1.0.0 && git push origin v1.0.0` (the PR #3 merge commit), then
+   `git tag -a v1.1.0 <1.1.0 merge commit> -m v1.1.0 && git push origin v1.1.0`.
+2. Owner (still open): enable private vulnerability reporting, fix the repo description (25 tools), record
+   the demo, run the live-VM checks.
 
 ## Blockers / waiting on
 None.

@@ -36,10 +36,17 @@ keep working with a warning until 2.0.0.
 - `pingsweep` exits 1 when a host is down.
 - Failed result rows (`diskwatch`, `httpcheck`, `pingsweep`) go to stdout with
   the healthy ones. Prompts go to stderr.
-- Stray arguments are an error (exit 2). `grant-sudo`, `newuser`, `memwatch`,
-  `topproc` and `diskwatch` used to ignore them.
-- Bundled short options (`-an 5`) and attached values (`-n5`) are no longer
-  parsed. Pass each flag separately.
+- Stray arguments are an error (exit 2) in every tool. Before, `backup`,
+  `bigfiles`, `dirsnap`, `logtop`, `txtstats`, `audit-perms`, `whohas`,
+  `grant-sudo`, `newuser`, `memwatch`, `topproc`, `diskwatch` and
+  `docker-run-web` ignored extra arguments, and `permfix` used the last one.
+- Counts and timeouts must be plain positive integers: `0` and leading zeros
+  (`-n 007`, `httpcheck -t 0`) are usage errors.
+- An empty option value (`-o ""`) is a usage error instead of being ignored.
+- Bundled short options (`-an 5`) and attached values (`-n5`, `-uBob`) are no
+  longer parsed. Pass each flag and its value separately.
+- A value that is literally `-h` or `--help` (for example `logtop -g -h`)
+  is read as a request for help.
 
 ### Deprecated
 These still work, print a warning, and will be removed in 2.0.0:
@@ -53,7 +60,13 @@ These still work, print a warning, and will be removed in 2.0.0:
 - `sshkey -c USER@HOST`: use `--copy-to`.
 
 ### Fixed
-- `pkg.sh install -h` tried to install a package named `-h`.
+- `pkg.sh install -h` tried to install a package named `-h`. Other options
+  after the subcommand (`--purge`, `--no-install-recommends`) still go to the
+  package manager.
+- `--` ended the options only in some tools; it now does in all of them.
+- `name_echo.sh` treated `--help` and unknown options as the iteration count.
+- `sshkey` replacing a key now generates the new pair beside the old one, so a
+  failed ssh-keygen leaves the old key in place.
 - `sshkey --yes` hung on ssh-keygen's own overwrite prompt when the key
   already existed.
 - A dry run of `sshkey` no longer prints "keypair generated".

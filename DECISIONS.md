@@ -265,7 +265,9 @@ declined prompt exiting 0 in six tools and 1 in eight. A toolkit that claims con
 consistent where a user touches it first: the command line.
 **Rejected:** getopts everywhere (no long options, `--help` needs a shim); a full option-parsing library
 (a dependency for 25 small scripts); `--opt=value` syntax (more parser code for little gain).
-**Note:** Bundled short options (`-an 5`) and attached values (`-n5`) are no longer parsed.
+**Note:** `help_requested` scans every argument before `--`, so an option value that is literally `-h` or
+`--help` triggers help. Accepted: such values are rare, and the pre-scan is what makes help work even
+after an argument the parser would reject. An empty option value counts as missing (`need_arg`).
 **Status:** Final.
 
 ---
@@ -280,5 +282,24 @@ the tool's help and in `CHANGELOG.md`. Aliases are removed together in the next 
 name at the moment it matters. Bundling a clean break with the interface work would have forced 2.0.0
 immediately.
 **Rejected:** A clean break (version 2.0.0 now); silent aliases (nobody would ever migrate).
+**Not covered by aliases (deliberate syntax changes, listed under "Changed" in 1.1.0):** bundled short
+options (`-an 5`) and attached values (`-n5`) are no longer parsed, and stray arguments, `0` counts and
+leading zeros are usage errors. Supporting bundles generically would need each tool's value-taking
+options in a shared pre-parser; the cost outweighed the convenience.
 **Status:** Final.
+
+---
+
+### D24: Machine output for the four monitors only; checks exit 1 on a problem
+**Decision:** `diskwatch`, `memwatch`, `httpcheck` and `pingsweep` accept `--json` and then print exactly one
+JSON document on stdout: a top-level `ok`, the tool's settings, and one record per filesystem, URL or host.
+Strings go through `json_str`, numbers through `json_num` (anything else becomes `null`); sizes are KiB
+(`df -kP`) or bytes, never human strings. All four exit 1 when they find a problem, including `pingsweep`
+(it used to exit 0) and `memwatch` once `-w/--warn` is given. Failing rows go to stdout with healthy ones.
+**Why:** These are the tools a cron job, a CI step or another program consumes; the rest are reports for
+people. The owner chose this scope. A dependency on `jq` was avoided: the documents are built in Bash and
+checked in the tests with Python's json module.
+**Rejected:** `--json` on every report tool (much more code for output nobody parses yet); emitting JSON
+with `jq -n` (a new runtime dependency); human-readable sizes in JSON (callers would have to parse them).
+**Status:** Final; more tools can gain `--json` later under the same document shape.
 

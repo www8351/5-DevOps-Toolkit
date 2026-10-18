@@ -2,7 +2,7 @@
 
 # 🧰 5-DevOps-Toolkit
 
-### `5 folders` · `25 single-purpose tools` · `1 shared engine` · `249 tests` · `6 green CI checks`
+### `5 folders` · `25 single-purpose tools` · `1 shared engine` · `256 tests` · `6 green CI checks`
 
 **Turning a raw Linux command cheat-sheet into a working, guarded DevOps toolkit.**
 *הופך רשימת פקודות לינוקס גולמית לערכת כלים אמיתית, מסודרת ומוגנת.*
@@ -144,7 +144,7 @@ Every script follows the same defensive contract:
 - **`need_cmd`** aborts early if a required binary is missing.
 - **`require_root`** refuses to run privileged tools as a normal user, except for a `DRY_RUN=1` preview.
 - **`confirm`** asks before any destructive action; skip it in CI with `--yes` (or `ASSUME_YES=1`).
-  Answering no exits 1 and changes nothing.
+  Answering no stops the tool with exit 1.
 - **`--dry-run`** (or `DRY_RUN=1`) prints what *would* happen instead of doing it. The flag survives
   `sudo`; the variable only does when written after it (`sudo DRY_RUN=1 ./tool.sh`).
 - Health checks (`diskwatch.sh`, `memwatch.sh --warn`, `httpcheck.sh`, `pingsweep.sh`) exit 1 on a
@@ -204,12 +204,12 @@ a green tick means the whole toolkit is clean.
 | Check | What it guarantees |
 |-------|--------------------|
 | **shellcheck + `bash -n`** | every `*.sh` is syntax-clean and shellcheck-clean (`-e SC1091`) |
-| **bats** | 140 tests: `lib/common.sh`, the command-line contract for every tool (help anywhere and before dependency checks, exit 2 on bad usage, executable bit), behaviour tests on temp fixtures and stubbed commands, and the monitors' JSON |
+| **bats** | 147 tests: `lib/common.sh`, the command-line contract for every tool (help anywhere and before dependency checks, exit 2 on bad usage, executable bit), behaviour tests on temp fixtures and stubbed commands, and the monitors' JSON |
 | **pytest** (Python 3.10 + 3.14) | 109 tests over `ssh_toolkit` (config precedence, CLI flags, env toggles, input validation, remote command building, rollback) and `ec2-deploy.py` (launch prompt, env toggles) |
 | **py_compile + ruff** | the Python compiles and passes ruff syntax + pyflakes rules (`E9,F`) |
 | **makefile** | the `Makefile` parses and every target resolves (`make -n all`) |
 
-**249 tests total, all VM-free.** Decisions and their rationale live in [`DECISIONS.md`](DECISIONS.md),
+**256 tests total, all VM-free.** Decisions and their rationale live in [`DECISIONS.md`](DECISIONS.md),
 the current state in [`STATUS.md`](STATUS.md), a dated history in [`PROGRESS.md`](PROGRESS.md), and
 release notes in [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -252,7 +252,7 @@ make all           # lint + test
 - ✅ `ssh_toolkit`: cross-platform (Windows / macOS / Linux) Python SSH automation
 - ✅ Bilingual (HE / EN) documentation, published to GitHub
 - ✅ **CI**: shellcheck, bats, pytest on Python 3.10 and 3.14, ruff and a Makefile check on every push and PR
-- ✅ **249 tests** (140 bats + 109 pytest), all VM-free, including behaviour tests for the shell tools
+- ✅ **256 tests** (147 bats + 109 pytest), all VM-free, including behaviour tests for the shell tools
 - ✅ **One command-line contract** for all tools: shared flag letters, help anywhere, exit codes 0/1/2,
       `--dry-run`/`--yes` flags, and `--json` for the four monitors
 - ✅ **Task runner**: `make` (Linux / WSL / macOS) and `tasks.ps1` (Windows), same targets
@@ -285,7 +285,7 @@ make all           # lint + test
 - **Networking**: interface & route inspection, host sweeps, endpoint health, port scanning, SSH keys.
 - **Containers & cloud**: distro-agnostic package wrapper, Docker run/clean, Jenkins install, boto3 EC2.
 - **Software engineering**: a shared library, consistent CLIs, guards, dry-run, and shellcheck hygiene.
-- **Testing & CI**: bats + pytest (249 cases) with fixtures and stubbed commands, GitHub Actions on every push, a Makefile/PowerShell task runner.
+- **Testing & CI**: bats + pytest (256 cases) with fixtures and stubbed commands, GitHub Actions on every push, a Makefile/PowerShell task runner.
 - **Process discipline**: a maintained decision log, a changelog and status/progress files; each change lands as a small, reviewable commit.
 
 </details>
