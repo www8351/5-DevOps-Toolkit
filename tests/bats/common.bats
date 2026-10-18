@@ -144,6 +144,88 @@ in_common() {
   [ "$status" -ne 0 ]
 }
 
+# ── CLI conventions (D22) ─────────────────────────────────────────────────────
+@test "usage_error explains, points at --help and exits 2" {
+  in_common 'usage_error "unknown option: --bogus"'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"unknown option: --bogus"* ]]
+  [[ "$output" == *"--help"* ]]
+}
+
+@test "usage_error writes to stderr" {
+  run bash -c "source \"\$COMMON\"; usage_error oops 1>/dev/null"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"oops"* ]]
+}
+
+@test "need_arg passes when the option has a value" {
+  in_common 'need_arg --top 5 && echo ok'
+  [ "$status" -eq 0 ]
+  [ "$output" = "ok" ]
+}
+
+@test "need_arg is a usage error when the value is missing" {
+  in_common 'need_arg --top'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--top needs a value"* ]]
+}
+
+@test "help_requested finds -h or --help anywhere" {
+  in_common 'help_requested -n 3 --help && help_requested file -h && echo yes'
+  [ "$output" = "yes" ]
+}
+
+@test "help_requested ignores everything after --" {
+  in_common 'help_requested -n 3 -- --help || echo no'
+  [ "$output" = "no" ]
+}
+
+@test "help_requested is false without a help flag" {
+  in_common 'help_requested -n 3 file || echo no'
+  [ "$output" = "no" ]
+}
+
+@test "deprecated warns on stderr, names the new flag and the removal" {
+  run bash -c "source \"\$COMMON\"; deprecated -f --field 1>/dev/null"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-f is deprecated"* ]]
+  [[ "$output" == *"--field"* ]]
+  [[ "$output" == *"2.0.0"* ]]
+}
+
+@test "confirm asks on stderr, so stdout stays clean for results" {
+  run bash -c "source \"\$COMMON\"; confirm 'go?' 2>/dev/null" <<< "y"
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+}
+
+@test "confirm_or_abort exits 1 and says nothing was changed" {
+  run bash -c "source \"\$COMMON\"; confirm_or_abort 'go?'; echo after" <<< "n"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"nothing was changed"* ]]
+  [[ "$output" != *"after"* ]]
+}
+
+@test "confirm_or_abort continues on yes" {
+  run bash -c "source \"\$COMMON\"; confirm_or_abort 'go?'; echo after" <<< "y"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"after"* ]]
+}
+
+@test "c_fail prints a [✗] result line to stdout" {
+  run bash -c "source \"\$COMMON\"; c_fail down 2>/dev/null"
+  [ "$status" -eq 0 ]
+  [ "$output" = "[✗] down" ]
+}
+
+@test "json_str output round-trips through a JSON parser" {
+  local input=$'quote" back\\slash tab\t nl\n bell\a unicode ✓ end'
+  run bash -c 'source "$COMMON"; json_str "$1"' _ "$input"
+  [ "$status" -eq 0 ]
+  run python3 -c 'import json, sys; print(json.loads(sys.argv[1]) == sys.argv[2])' "$output" "$input"
+  [ "$output" = "True" ]
+}
+
 # ── presentation & sourcing ───────────────────────────────────────────────────
 @test "banner draws a closed box around the title" {
   in_common 'banner Hi'
