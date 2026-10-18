@@ -17,7 +17,7 @@ sysinfo.sh — boxed dashboard of host, kernel, CPU, memory and disk
 Usage: $0 [options]
 
 Prints a one-glance, read-only dashboard with the following sections:
-  Host        hostnamectl (or hostname + uname -n fallback)
+  Host        hostnamectl (or hostname + /etc/os-release fallback)
   Kernel/OS   uname -a
   CPU         lscpu summary (model, core count, architecture)
   Memory      free -h
@@ -36,12 +36,18 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 section_host() {
   banner "Host"
-  if have hostnamectl; then
-    hostnamectl
+  local out=""
+  # hostnamectl needs a running systemd. Containers and WSL often ship the
+  # binary without it, so a failed call falls back instead of aborting.
+  if have hostnamectl && out="$(hostnamectl 2>/dev/null)"; then
+    printf '%s\n' "$out"
   else
-    c_warn "hostnamectl not found — using hostname + uname -n"
+    c_warn "hostnamectl unavailable, using hostname and /etc/os-release"
     printf '   Hostname: %s\n' "$(hostname 2>/dev/null || uname -n)"
-    printf 'Static name: %s\n' "$(uname -n)"
+    if [[ -r /etc/os-release ]]; then
+      printf '         OS: %s\n' "$(. /etc/os-release && printf '%s' "${PRETTY_NAME:-unknown}")"
+    fi
+    printf '     Kernel: %s\n' "$(uname -sr)"
   fi
   echo
 }
@@ -59,9 +65,9 @@ section_kernel() {
 section_cpu() {
   banner "CPU"
   if have lscpu; then
-    # Pull just the headline rows; '|| true' keeps a no-match grep from
-    # tripping pipefail on exotic locales.
-    lscpu | grep -E '^(Architecture|CPU\(s\)|Model name|Vendor ID|Thread\(s\) per core|Core\(s\) per socket):' || true
+    # Pull just the headline rows. LC_ALL=C keeps the labels in English on a
+    # localized host; '|| true' keeps a no-match grep from tripping pipefail.
+    LC_ALL=C lscpu | grep -E '^(Architecture|CPU\(s\)|Model name|Vendor ID|Thread\(s\) per core|Core\(s\) per socket):' || true
   else
     c_warn "lscpu not found — skipping CPU section"
   fi

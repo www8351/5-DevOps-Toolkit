@@ -46,3 +46,35 @@ MKSWAP="$REPO_ROOT/03-system-monitor/mkswap.sh"
   [[ "$output" == *"sudo DRY_RUN=1"* ]]
   [[ "$output" != *"DRY_RUN=1 sudo"* ]]
 }
+
+# A fake free(1) that prints translated row labels unless LC_ALL=C, like a
+# localized procps does. Only the C labels let the tools find their rows.
+LOCALIZED_FREE='if [[ "${LC_ALL:-}" == C ]]; then m=Mem; s=Swap; else m=Speicher; s=Auslager; fi
+echo "              total        used        free"
+echo "$m:          1000         250         750"
+echo "$s:           200          50         150"'
+
+@test "sysinfo falls back when hostnamectl is installed but cannot run" {
+  # Containers and WSL ship hostnamectl without systemd; it exits 1.
+  stub hostnamectl 'echo "System has not been booted with systemd" >&2; exit 1'
+  run bash "$REPO_ROOT/03-system-monitor/sysinfo.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Hostname:"* ]]
+  [[ "$output" == *"Kernel / OS"* ]]
+  [[ "$output" == *"Uptime / Load"* ]]
+}
+
+@test "sysinfo reads lscpu with C labels on a localized host" {
+  stub lscpu 'if [[ "${LC_ALL:-}" == C ]]; then echo "Architecture: x86_64"; else echo "Architektur: x86_64"; fi'
+  run bash "$REPO_ROOT/03-system-monitor/sysinfo.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Architecture: x86_64"* ]]
+}
+
+@test "memwatch computes usage with C labels on a localized host" {
+  stub free "$LOCALIZED_FREE"
+  run bash "$REPO_ROOT/03-system-monitor/memwatch.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"RAM used:  25.0%"* ]]
+  [[ "$output" == *"Swap used: 25.0%"* ]]
+}
