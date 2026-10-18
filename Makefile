@@ -5,7 +5,8 @@
 # Windows without `make`? Use ./tasks.ps1 with the same target names.
 
 SHELL := bash
-PY_TARGETS := 04-network-ssh/ssh_toolkit 05-docker-devops/ec2-deploy.py
+PY_TARGETS := 04-network-ssh/ssh_toolkit 04-network-ssh/tests 05-docker-devops/ec2-deploy.py 05-docker-devops/tests
+PY_TESTS := 04-network-ssh/tests 05-docker-devops/tests
 SH_FILES := $(shell find . -name '*.sh' -not -path '*/.venv/*' -not -path '*/.git/*')
 
 .DEFAULT_GOAL := help
@@ -22,8 +23,8 @@ syntax: ## bash -n over every shell script
 shellcheck: ## shellcheck all shell scripts (ignores SC1091)
 	@shellcheck -e SC1091 -S warning $(SH_FILES)
 
-ruff: ## ruff real-error lint on the Python code
-	@ruff check --select E9,F63,F7,F82 $(PY_TARGETS)
+ruff: ## ruff lint on the Python code (syntax + all pyflakes rules)
+	@ruff check --select E9,F $(PY_TARGETS)
 
 lint: syntax shellcheck ruff ## Run all linters
 
@@ -31,7 +32,7 @@ bats: ## Run the bats shell tests
 	@bats tests/bats
 
 pytest: ## Run the pytest suite
-	@pytest 04-network-ssh/tests -q
+	@pytest $(PY_TESTS) -q
 
 test: bats pytest ## Run all tests
 

@@ -10,7 +10,8 @@ permissions:
   contents: read
 
 env:
-  PY_TARGETS: 04-network-ssh/ssh_toolkit 05-docker-devops/ec2-deploy.py
+  PY_TARGETS: 04-network-ssh/ssh_toolkit 04-network-ssh/tests 05-docker-devops/ec2-deploy.py 05-docker-devops/tests
+  PY_TESTS: 04-network-ssh/tests 05-docker-devops/tests
 
 jobs:
   lint:
@@ -29,12 +30,13 @@ jobs:
       - name: Compile check
         run: python -m py_compile $(find 04-network-ssh/ssh_toolkit 05-docker-devops -name '*.py')
 
-      - name: Ruff (real errors only)
-        # E9 syntax, F63/F7 logic, F82 undefined names — not style. Keeps CI signal high.
-        run: ruff check --select E9,F63,F7,F82 $PY_TARGETS
+      - name: Ruff (syntax + pyflakes)
+        # E9 syntax and every pyflakes rule (F): unused imports and variables,
+        # undefined names, logic slips. Still no style rules (D11).
+        run: ruff check --select E9,F $PY_TARGETS
 
   pytest:
-    name: pytest (ssh_toolkit utils)
+    name: pytest (ssh_toolkit + ec2-deploy)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,4 +49,4 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Run pytest
-        run: pytest 04-network-ssh/tests -q
+        run: pytest $PY_TESTS -q
