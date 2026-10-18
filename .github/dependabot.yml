@@ -1,0 +1,15 @@
+# Weekly update PRs for the pinned GitHub Actions and Python dependencies.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directories:
+      - /
+      - /04-network-ssh
+      - /05-docker-devops
+    schedule:
+      interval: weekly

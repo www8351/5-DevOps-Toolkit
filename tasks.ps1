@@ -13,7 +13,8 @@
 param([string]$Task = 'help')
 
 $ErrorActionPreference = 'Stop'
-$PyTargets = @('04-network-ssh/ssh_toolkit', '05-docker-devops/ec2-deploy.py')
+$PyTargets = @('04-network-ssh/ssh_toolkit', '04-network-ssh/tests', '05-docker-devops/ec2-deploy.py', '05-docker-devops/tests')
+$PyTests   = @('04-network-ssh/tests', '05-docker-devops/tests')
 
 function Have($cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
 
@@ -52,7 +53,7 @@ function Invoke-Ruff {
     if (-not $py) { Write-Warning 'python not found; skipping ruff'; return }
     & $py -m ruff --version *> $null
     if ($LASTEXITCODE -ne 0) { Write-Warning 'ruff not installed (pip install ruff); skipping'; return }
-    & $py -m ruff check --select E9,F63,F7,F82 @PyTargets
+    & $py -m ruff check --select E9,F @PyTargets
     if ($LASTEXITCODE -ne 0) { throw 'ruff failed' }
 }
 
@@ -65,7 +66,7 @@ function Invoke-Bats {
 function Invoke-Pytest {
     $py = Get-Python
     if (-not $py) { throw 'python not found; cannot run pytest' }
-    & $py -m pytest 04-network-ssh/tests -q
+    & $py -m pytest @PyTests -q
     if ($LASTEXITCODE -ne 0) { throw 'pytest failed' }
 }
 
@@ -75,7 +76,7 @@ function Show-Help {
     Write-Host '  help        Show this help'
     Write-Host '  syntax      bash -n over every shell script'
     Write-Host '  shellcheck  shellcheck all shell scripts (CI)'
-    Write-Host '  ruff        ruff real-error lint on the Python code'
+    Write-Host '  ruff        ruff lint on the Python code (E9 + pyflakes)'
     Write-Host '  lint        syntax + shellcheck + ruff'
     Write-Host '  bats        bats shell tests (CI)'
     Write-Host '  pytest      pytest suite'

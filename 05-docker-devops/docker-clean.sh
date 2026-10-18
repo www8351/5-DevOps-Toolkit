@@ -49,6 +49,10 @@ main() {
     || die "--images-only and --containers-only are mutually exclusive"
 
   need_cmd docker
+  # Without this check every query below fails quietly (|| true) and a stopped
+  # daemon is reported as "already tidy".
+  docker info >/dev/null 2>&1 \
+    || die "cannot reach the Docker daemon (is it running, and may this user use it?)"
 
   local container_ids="" image_ids=""
 
@@ -67,10 +71,16 @@ main() {
     image_ids="$(docker images -f dangling=true -q 2>/dev/null || true)"
   fi
 
+  # The plan lists the same states that will be removed (-f adds created/dead).
+  local -a state_filters=(--filter status=exited)
+  if [[ "$include_dead" -eq 1 ]]; then
+    state_filters+=(--filter status=created --filter status=dead)
+  fi
+
   banner "docker cleanup plan"
   if [[ -n "$container_ids" ]]; then
     c_info "stopped containers to remove:"
-    docker ps -a --filter status=exited --format '  {{.ID}}  {{.Image}}  {{.Names}}' 2>/dev/null || true
+    docker ps -a "${state_filters[@]}" --format '  {{.ID}}  {{.Image}}  {{.Names}}' 2>/dev/null || true
   else
     c_info "no stopped containers to remove"
   fi
@@ -92,16 +102,20 @@ main() {
   if [[ -n "$container_ids" ]]; then
     # shellcheck disable=SC2086
     run docker rm $container_ids
-    c_ok "removed stopped containers"
+    [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "removed stopped containers"
   fi
 
   if [[ -n "$image_ids" ]]; then
     # shellcheck disable=SC2086
     run docker rmi $image_ids
-    c_ok "removed dangling images"
+    [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "removed dangling images"
   fi
 
-  c_ok "cleanup complete"
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    c_info "dry run finished: nothing was changed"
+  else
+    c_ok "cleanup complete"
+  fi
 }
 
 main "$@"

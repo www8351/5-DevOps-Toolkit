@@ -1,12 +1,47 @@
 """SFTP file transfer and remote command execution."""
 from __future__ import annotations
 
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
 
-from .utils import default_keyfile, log, ok
+from .utils import default_keyfile, log, ok, remote_exec, ssh_client
+
+# Options for non-interactive native ssh/scp: fail instead of prompting for a
+# password, and drop a dead connection after about 45 s of silence.
+_SSH_OPTS = [
+    "-o", "StrictHostKeyChecking=accept-new",
+    "-o", "BatchMode=yes",
+    "-o", "ConnectTimeout=10",
+    "-o", "ServerAliveInterval=15",
+    "-o", "ServerAliveCountMax=3",
+]
+
+
+# ── remote path helpers ───────────────────────────────────────────────────────
+
+def _remote_path(path: str) -> str:
+    """Quote *path* for a POSIX remote shell, keeping a leading ~ expandable.
+
+    A quoted ~ is never expanded, so "~/demo" would create a directory that is
+    literally named ~. "$HOME" does expand inside double quotes.
+    """
+    if path == "~":
+        return '"$HOME"'
+    if path.startswith("~/"):
+        return '"$HOME"/' + shlex.quote(path[2:])
+    return shlex.quote(path)
+
+
+def _sftp_path(path: str) -> str:
+    """SFTP paths are relative to the login directory and never expand ~."""
+    if path in ("~", "~/"):
+        return "."
+    if path.startswith("~/"):
+        return path[2:]
+    return path
 
 
 # ── SFTP / SCP file transfer ──────────────────────────────────────────────────
@@ -67,11 +102,12 @@ def _scp_native(
             scp,
             "-P", str(port),
             "-i", str(keyfile),
-            "-o", "StrictHostKeyChecking=accept-new",
+            *_SSH_OPTS,
             str(src),
             f"{user}@{host}:{remote_dest}",
         ],
         check=True,
+        timeout=3600,  # generous cap for a large file; dead links drop sooner
     )
 
 
@@ -83,22 +119,18 @@ def _sftp_paramiko(
     keyfile: Path,
     remote_dest: str,
 ) -> None:
-    try:
-        import paramiko  # type: ignore[import]
-    except ImportError:
-        raise RuntimeError("Neither scp nor paramiko is available.")
-
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client = ssh_client("Neither scp nor paramiko is available.")
     client.connect(host, port=port, username=user, key_filename=str(keyfile), timeout=15)
     try:
-        # Ensure remote parent directory exists
-        parent = remote_dest.rsplit("/", 1)[0]
-        if parent:
-            client.exec_command(f'mkdir -p "{parent}"')
+        # Ensure the remote parent directory exists before the upload starts.
+        if "/" in remote_dest:
+            parent = remote_dest.rsplit("/", 1)[0] or "/"
+            rc, _, err = remote_exec(client, f"mkdir -p {_remote_path(parent)}")
+            if rc != 0:
+                raise RuntimeError(f"Could not create {parent} on {host}: {err.strip()}")
 
         sftp = client.open_sftp()
-        sftp.put(str(src), remote_dest)
+        sftp.put(str(src), _sftp_path(remote_dest))
         sftp.close()
     finally:
         client.close()
@@ -113,6 +145,7 @@ def run_remote(
     port: int = 22,
     keyfile: Optional[Path] = None,
     dry_run: bool = False,
+    timeout: float = 300,
 ) -> Tuple[str, str, int]:
     """
     Execute *command* on the remote host.
@@ -134,29 +167,40 @@ def run_remote(
             [
                 native_ssh, "-p", str(port),
                 "-i", str(keyfile),
-                "-o", "StrictHostKeyChecking=accept-new",
-                "-o", "ConnectTimeout=10",
+                *_SSH_OPTS,
                 f"{user}@{host}", command,
             ],
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
         return (result.stdout, result.stderr, result.returncode)
 
-    try:
-        import paramiko  # type: ignore[import]
-    except ImportError:
-        raise RuntimeError("Neither ssh nor paramiko is available.")
-
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client = ssh_client("Neither ssh nor paramiko is available.")
     client.connect(host, port=port, username=user, key_filename=str(keyfile), timeout=15)
     try:
-        _, stdout_fd, stderr_fd = client.exec_command(command)
-        exit_status = stdout_fd.channel.recv_exit_status()
-        return (stdout_fd.read().decode(), stderr_fd.read().decode(), exit_status)
+        exit_status, out, err = remote_exec(client, command, timeout=timeout)
+        return (out, err, exit_status)
     finally:
         client.close()
+
+
+def _demo_script(remote_dir: str) -> str:
+    """Build the remote demo script for *remote_dir* (a leading ~ expands)."""
+    target = _remote_path(remote_dir)
+    # Idempotent: mkdir -p ensures re-runs don't fail on existing dir.
+    # The tar step overwrites the archive (desired for repeated demo runs).
+    return f"""
+set -e
+mkdir -p {target}
+cd {target}
+for i in 1 2 3 4 5; do
+    touch "$i.txt"
+done
+tar -zcvf ubuntu_ssh.tgz 1.txt 2.txt 3.txt 4.txt 5.txt
+echo "done"
+ls -la
+""".strip()
 
 
 def run_demo(
@@ -180,19 +224,7 @@ def run_demo(
     if keyfile is None:
         keyfile = default_keyfile()
 
-    # Idempotent: mkdir -p ensures re-runs don't fail on existing dir.
-    # The tar step overwrites the archive (desired for repeated demo runs).
-    demo_script = f"""
-set -e
-mkdir -p "{remote_dir}"
-cd "{remote_dir}"
-for i in 1 2 3 4 5; do
-    touch "$i.txt"
-done
-tar -zcvf ubuntu_ssh.tgz 1.txt 2.txt 3.txt 4.txt 5.txt
-echo "done"
-ls -la
-""".strip()
+    demo_script = _demo_script(remote_dir)
 
     log.info("Running remote demo on %s@%s in %s", user, host, remote_dir)
 

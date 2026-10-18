@@ -55,10 +55,11 @@ main() {
 
   # Compute percentages from byte-accurate output (free -b) so the maths is
   # exact rather than rounded human-readable values. The 'Mem:' and 'Swap:'
-  # rows expose total (col 2) and used (col 3).
+  # rows expose total (col 2) and used (col 3). LC_ALL=C pins those labels,
+  # which a localized procps would translate.
   local mem_pct swap_pct
-  mem_pct="$(free -b | awk '/^Mem:/ {if ($2 > 0) printf "%.1f", $3/$2*100; else print "0.0"}')"
-  swap_pct="$(free -b | awk '/^Swap:/ {if ($2 > 0) printf "%.1f", $3/$2*100; else print "0.0"}')"
+  mem_pct="$(LC_ALL=C free -b | awk '/^Mem:/ {if ($2 > 0) printf "%.1f", $3/$2*100; else print "0.0"}')"
+  swap_pct="$(LC_ALL=C free -b | awk '/^Swap:/ {if ($2 > 0) printf "%.1f", $3/$2*100; else print "0.0"}')"
 
   c_info "RAM used:  ${mem_pct}%"
   c_info "Swap used: ${swap_pct}%"

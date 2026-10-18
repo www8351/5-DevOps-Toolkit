@@ -9,7 +9,7 @@
 #   c_info/c_ok/c_warn/c_err MSG   coloured log lines (warn/err -> stderr)
 #   die MSG                        log error + exit 1
 #   need_cmd CMD                   abort if a dependency binary is missing
-#   require_root                   abort unless EUID 0 (prints sudo hint)
+#   require_root                   abort unless EUID 0 (DRY_RUN=1 may preview)
 #   confirm "question"             y/N prompt; honours ASSUME_YES=1
 #   run CMD...                     exec, or just echo when DRY_RUN=1
 #   hr                             terminal-wide horizontal rule
@@ -44,9 +44,16 @@ die()    { c_err "$*"; exit 1; }
 # need_cmd CMD — fail fast if a required binary is not on PATH.
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"; }
 
-# require_root — refuse to continue unless running as root.
+# require_root — refuse to continue unless running as root. Under DRY_RUN=1 a
+# normal user may continue: every side effect goes through `run`, which only
+# prints, so the preview cannot change the system.
 require_root() {
-  [[ "$(id -u)" -eq 0 ]] || die "this action needs root — re-run with: sudo $0 $*"
+  [[ "$(id -u)" -eq 0 ]] && return 0
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    c_warn "not root: DRY_RUN=1 preview only, nothing will be changed"
+    return 0
+  fi
+  die "this action needs root; re-run with sudo (preview first with: sudo DRY_RUN=1 $0 ...)"
 }
 
 # confirm "msg" — interactive y/N. Returns 0 on yes. ASSUME_YES=1 bypasses.
@@ -69,12 +76,16 @@ run() {
 }
 
 # ---- presentation ------------------------------------------------------------
-hr() { local w="${COLUMNS:-60}"; printf '%*s\n' "$w" '' | tr ' ' '─'; }
+# _rule N — print N '─' characters. Built with parameter expansion, not `tr`:
+# tr swaps single bytes, and '─' is three bytes in UTF-8.
+_rule() { local s; printf -v s '%*s' "$1" ''; printf '%s' "${s// /─}"; }
+
+hr() { _rule "${COLUMNS:-60}"; printf '\n'; }
 
 banner() {
-  local title="  $*  " width
-  width=${#title}
-  printf '%s┌%s┐%s\n' "$_C_BOLD" "$(printf '%*s' "$width" '' | tr ' ' '─')" "$_C_RESET"
+  local title="  $*  " line
+  line="$(_rule "${#title}")"
+  printf '%s┌%s┐%s\n' "$_C_BOLD" "$line" "$_C_RESET"
   printf '%s│%s│%s\n' "$_C_BOLD" "$title" "$_C_RESET"
-  printf '%s└%s┘%s\n' "$_C_BOLD" "$(printf '%*s' "$width" '' | tr ' ' '─')" "$_C_RESET"
+  printf '%s└%s┘%s\n' "$_C_BOLD" "$line" "$_C_RESET"
 }

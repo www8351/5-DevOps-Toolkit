@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # diskwatch.sh — flag mounted filesystems above a usage threshold
-#   commands showcased: df, awk, tr, tail
+#   commands showcased: df, tail, read
 #
 # Usage: ./diskwatch.sh [-t PERCENT]
 #
@@ -16,8 +16,10 @@ diskwatch.sh — flag mounted filesystems above a usage threshold
 
 Usage: $0 [-t PERCENT]
 
-Walks the real (non-pseudo) filesystems from 'df -hP' and reports each
-mount point's usage. Mounts at or above the threshold are flagged.
+Walks the real filesystems from 'df -hP' and reports each mount point's
+usage. Mounts at or above the threshold are flagged. Pseudo filesystems and
+read-only images that are always full (tmpfs, overlay, snap loop mounts)
+are skipped.
 
 Exit code is 1 if ANY mount is at/above the threshold, which makes this
 script convenient to drop straight into cron or a CI health check.
@@ -51,30 +53,25 @@ main() {
     || die "threshold must be an integer 1-100, got: $threshold"
 
   need_cmd df
-  need_cmd awk
 
   c_info "Checking filesystem usage against ${threshold}% threshold"
   hr
 
-  local over=0 line fs use_pct mount used size
+  local over=0 fs size used _avail use_pct mount
 
-  # df -hP gives portable, single-line-per-fs output (POSIX -P), so each
-  # record's columns line up predictably. Skip the header (tail -n +2) and
-  # the pseudo filesystems we never want to alarm on.
-  while IFS= read -r line; do
-    fs="$(echo "$line" | awk '{print $1}')"
-
-    # Skip virtual/pseudo filesystems by source device name.
+  # df -hP gives portable, single-line-per-fs output (POSIX -P), so the first
+  # five columns line up predictably. read puts everything after them into
+  # mount, which keeps mount points that contain spaces intact. The header is
+  # skipped with tail -n +2.
+  while read -r fs size used _avail use_pct mount; do
+    # Skip pseudo filesystems and read-only images that always report 100%:
+    # snap packages (/dev/loop*) and macOS automount maps.
     case "$fs" in
-      tmpfs|devtmpfs|udev|overlay|none) continue ;;
+      tmpfs|devtmpfs|udev|overlay|none|map|/dev/loop*) continue ;;
     esac
 
-    size="$(echo "$line"   | awk '{print $2}')"
-    used="$(echo "$line"   | awk '{print $3}')"
-    mount="$(echo "$line"  | awk '{print $6}')"
     # Use% sits in column 5; strip the trailing '%' for arithmetic.
-    use_pct="$(echo "$line" | awk '{print $5}' | tr -d '%')"
-
+    use_pct="${use_pct%\%}"
     # Some pseudo mounts report '-' for usage; ignore anything non-numeric.
     [[ "$use_pct" =~ ^[0-9]+$ ]] || continue
 

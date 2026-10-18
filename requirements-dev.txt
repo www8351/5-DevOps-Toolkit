@@ -1,4 +1,7 @@
-# Development / CI tooling — not required to run the toolkit itself.
-# bats (bash test harness) is installed via the OS package manager, not pip.
-pytest>=8.0
-ruff>=0.6
+# Development / CI tooling, not required to run the toolkit itself.
+# Pinned so local runs and CI lint and test with the same versions;
+# Dependabot proposes upgrades. bats is installed via the OS package manager.
+pytest==9.1.1
+ruff==0.17.1
+# ssh_toolkit reads config.toml with tomllib (3.11+) or tomli before that.
+tomli==2.2.1; python_version < "3.11"

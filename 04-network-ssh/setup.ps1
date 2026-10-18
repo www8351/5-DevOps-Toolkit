@@ -11,17 +11,17 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $VenvDir   = Join-Path $ScriptDir ".venv"
 $ReqFile   = Join-Path $ScriptDir "requirements.txt"
 
-# ── find Python 3.8+ ──────────────────────────────────────────────────────────
+# ── find Python 3.10+ ─────────────────────────────────────────────────────────
 $Py = $null
 foreach ($candidate in @("py", "python", "python3")) {
     try {
-        $ver = & $candidate -c "import sys; print(sys.version_info >= (3,8))" 2>$null
+        $ver = & $candidate -c "import sys; print(sys.version_info >= (3,10))" 2>$null
         if ($ver -eq "True") { $Py = $candidate; break }
     } catch {}
 }
 
 if (-not $Py) {
-    Write-Error "[x] Python 3.8+ not found. Install from https://python.org and retry."
+    Write-Error "[x] Python 3.10+ not found. Install from https://python.org and retry."
     exit 1
 }
 
@@ -52,5 +52,16 @@ if (-not (Test-Path $CfgPath) -and (Test-Path $CfgExample)) {
 }
 
 # ── launch toolkit ────────────────────────────────────────────────────────────
-& $VenvPy -m ssh_toolkit @Rest
-exit $LASTEXITCODE
+# PYTHONPATH makes the package importable from any working directory, without
+# a Set-Location that would break relative paths passed on the command line.
+# A script shares the caller's process, so the old value is restored after.
+$OldPythonPath = $env:PYTHONPATH
+$sep = [IO.Path]::PathSeparator
+$env:PYTHONPATH = if ($OldPythonPath) { "$ScriptDir$sep$OldPythonPath" } else { $ScriptDir }
+try {
+    & $VenvPy -m ssh_toolkit @Rest
+    $code = $LASTEXITCODE
+} finally {
+    $env:PYTHONPATH = $OldPythonPath
+}
+exit $code

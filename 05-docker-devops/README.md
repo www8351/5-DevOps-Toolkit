@@ -9,7 +9,7 @@ Small, focused scripts for wrapping package managers, running and cleaning Docke
 | ------ | ------------ | ------------ | ---------- |
 | `pkg.sh` | Distro-agnostic package manager wrapper (install/upgrade/remove/update/search) | `apt-get`, `dnf`, `yum` | Yes (mutating subcommands only) |
 | `docker-run-web.sh` | Launch a known web image with port/volume mapping, print its URL + IP | `docker run -d -p -v --name`, `docker inspect` | No |
-| `docker-clean.sh` | Prune stopped containers and dangling images | `docker ps -a`, `docker rm`, `docker images`, `docker rmi` | No |
+| `docker-clean.sh` | Prune stopped containers and dangling images (fails if the daemon is unreachable) | `docker ps -a`, `docker rm`, `docker images`, `docker rmi` | No |
 | `install-jenkins.sh` | Install Jenkins on Debian/Ubuntu (JDK, repo, service, firewall) | `apt-get`, `curl`, `systemctl`, `ufw` | Yes |
 | `ec2-deploy.py` | boto3 mini-deploy: launch a t2.micro EC2 instance from CLI args | `boto3` (`ec2.create_instances`) | No (needs AWS creds) |
 
@@ -31,8 +31,12 @@ DRY_RUN=1 ./docker-clean.sh
 sudo ./install-jenkins.sh
 
 # Validate an EC2 launch without actually creating an instance
+pip install -r requirements.txt        # boto3, for ec2-deploy.py only
 ./ec2-deploy.py --image-id ami-0abcdef1234567890 --dry-run
 ```
+
+A real `ec2-deploy.py` launch starts billing, so it asks y/N first. `--yes` or
+`ASSUME_YES=1` skips the prompt, and `DRY_RUN=1` works like `--dry-run`.
 
 Pass `-h` / `--help` to any script (or `python3 ec2-deploy.py --help`) for full options.
 

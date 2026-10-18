@@ -39,8 +39,6 @@ ping_host() {
 }
 
 main() {
-  need_cmd ping
-
   local -a hosts=()
   local file=""
 
@@ -68,6 +66,9 @@ main() {
   fi
 
   [[ "${#hosts[@]}" -gt 0 ]] || die "no hosts given (provide host... or -f FILE)"
+
+  # Checked after parsing so -h works without ping installed.
+  need_cmd ping
 
   banner "Ping sweep (${#hosts[@]} host(s))"
   printf '%-30s  %-6s  %s\n' "HOST" "STATE" "RTT(ms)"

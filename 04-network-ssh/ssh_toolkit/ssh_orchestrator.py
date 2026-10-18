@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import getpass
+import shlex
 import shutil
 import socket
 import subprocess
-import sys
 from pathlib import Path
 from typing import Optional
 
-from .utils import confirm, default_keyfile, is_windows, log, ok, pubkey_path
+from .utils import default_keyfile, is_windows, log, ok, pubkey_path, remote_exec, ssh_client
 
 
 # ── key generation ────────────────────────────────────────────────────────────
@@ -17,7 +17,6 @@ from .utils import confirm, default_keyfile, is_windows, log, ok, pubkey_path
 def ensure_keys(
     keyfile: Optional[Path] = None,
     comment: str = "",
-    assume_yes: bool = False,
     dry_run: bool = False,
 ) -> Path:
     """
@@ -55,6 +54,7 @@ def ensure_keys(
         subprocess.run(
             ["ssh-keygen", "-t", "ed25519", "-f", str(keyfile), "-C", comment, "-N", ""],
             check=True,
+            timeout=60,
         )
     except FileNotFoundError:
         log.info("ssh-keygen not found — using paramiko to generate key")
@@ -89,7 +89,6 @@ def copy_id(
     user: str,
     port: int = 22,
     keyfile: Optional[Path] = None,
-    assume_yes: bool = False,
     dry_run: bool = False,
 ) -> None:
     """
@@ -120,77 +119,57 @@ def copy_id(
     if native:
         cmd = [native, "-i", str(pub), "-p", str(port), target]
         log.info("Using native ssh-copy-id")
-        subprocess.run(cmd, check=True)
+        # Interactive: the user types the remote password here, so allow time.
+        subprocess.run(cmd, check=True, timeout=300)
         ok(f"Public key copied to {target}")
         return
 
-    # Windows fallback: paramiko-based copy
+    # Windows fallback: paramiko-based copy to a POSIX remote
     log.info("ssh-copy-id not available — using paramiko (password-based) fallback")
     password = getpass.getpass(f"Password for {target}: ")
-
-    try:
-        import paramiko  # type: ignore[import]
-    except ImportError:
-        raise RuntimeError(
-            "paramiko not installed. Run setup.sh / setup.ps1 first."
-        )
-
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    log.warning(
-        "Host key verification disabled for initial key copy. "
-        "Remove AutoAddPolicy after first connect for security."
-    )
+    client = ssh_client("paramiko not installed. Run setup.sh / setup.ps1 first.")
 
     try:
         client.connect(host, port=port, username=user, password=password, timeout=15)
 
-        # Detect remote home directory
-        _, stdout, _ = client.exec_command('echo "$HOME"')
-        remote_home = stdout.read().decode().strip()
-        if not remote_home or remote_home == "$HOME":
-            # Windows remote or $HOME not set
-            _, stdout, _ = client.exec_command("echo %USERPROFILE%")
-            remote_home = stdout.read().decode().strip()
-        if not remote_home:
-            remote_home = f"/home/{user}" if user != "root" else "/root"
+        # $HOME also tells the platforms apart: only a POSIX home starts with "/".
+        rc, home, _ = remote_exec(client, 'printf %s "$HOME"')
+        home = home.strip()
+        if rc != 0 or not home.startswith("/"):
+            raise RuntimeError(
+                f"{target} does not look like a Linux/macOS host ($HOME={home!r}); "
+                "the paramiko fallback only supports POSIX remotes"
+            )
+        ssh_dir = f"{home}/.ssh"
+        auth_keys = f"{ssh_dir}/authorized_keys"
 
-        remote_ssh_dir = f"{remote_home}/.ssh"
-        auth_keys_path = f"{remote_ssh_dir}/authorized_keys"
-
-        # Detect remote OS (POSIX vs Windows)
-        _, stdout, _ = client.exec_command("uname 2>/dev/null; echo $?")
-        uname_out = stdout.read().decode().strip()
-        is_posix_remote = not uname_out.startswith("0") and bool(uname_out)
-
-        # Create ~/.ssh directory
-        client.exec_command(f'mkdir -p "{remote_ssh_dir}"')
-        if is_posix_remote:
-            client.exec_command(f'chmod 700 "{remote_ssh_dir}"')
-
-        # Check if key already present (idempotent)
-        _, stdout, _ = client.exec_command(f'cat "{auth_keys_path}" 2>/dev/null || echo ""')
-        existing_keys = stdout.read().decode()
-        if pubkey_text in existing_keys:
-            log.info("Key already present in %s:%s — Already satisfied", host, auth_keys_path)
+        # Idempotent: skip when the exact key line is already present.
+        _, existing, _ = remote_exec(client, f"cat {shlex.quote(auth_keys)} 2>/dev/null || true")
+        if pubkey_text in (line.strip() for line in existing.splitlines()):
+            log.info("Key already present in %s:%s — Already satisfied", host, auth_keys)
             return
 
-        # Append key
-        _, stdout, stderr = client.exec_command(
-            f'echo "{pubkey_text}" >> "{auth_keys_path}"'
+        # The key travels on stdin, never inside the command line.
+        rc, _, err = remote_exec(
+            client, _append_key_command(ssh_dir, auth_keys), stdin_text=pubkey_text + "\n",
         )
-        exit_status = stdout.channel.recv_exit_status()
-        if exit_status != 0:
-            err = stderr.read().decode()
-            raise RuntimeError(f"Failed to append key: {err}")
+        if rc != 0:
+            raise RuntimeError(f"Failed to append key: {err.strip()}")
 
-        if is_posix_remote:
-            client.exec_command(f'chmod 600 "{auth_keys_path}"')
-
-        ok(f"Public key appended to {host}:{auth_keys_path}")
+        ok(f"Public key appended to {host}:{auth_keys}")
 
     finally:
         client.close()
+
+
+def _append_key_command(ssh_dir: str, auth_keys: str) -> str:
+    """One remote command that creates ~/.ssh and appends stdin to authorized_keys.
+
+    A single command avoids the race of separate exec_command calls, and
+    umask 077 means the files are never readable by others, even briefly.
+    """
+    d, k = shlex.quote(ssh_dir), shlex.quote(auth_keys)
+    return f"umask 077 && mkdir -p {d} && chmod 700 {d} && cat >> {k} && chmod 600 {k}"
 
 
 # ── connection test ────────────────────────────────────────────────────────────
@@ -228,6 +207,7 @@ def connect_test(
                 target, "true",
             ],
             capture_output=True,
+            timeout=30,
         )
         if result.returncode == 0:
             ok(f"SSH connection to {target} successful")
@@ -236,13 +216,7 @@ def connect_test(
         return False
 
     # Paramiko fallback
-    try:
-        import paramiko  # type: ignore[import]
-    except ImportError:
-        raise RuntimeError("Neither ssh nor paramiko available.")
-
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client = ssh_client("Neither ssh nor paramiko available.")
     try:
         client.connect(
             host, port=port, username=user,

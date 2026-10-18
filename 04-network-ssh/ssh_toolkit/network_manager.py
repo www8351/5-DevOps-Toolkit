@@ -14,7 +14,9 @@ automatic rollback from the timestamped backup.
 """
 from __future__ import annotations
 
+import ipaddress
 import platform
+import re
 import shutil
 import subprocess
 import time
@@ -23,6 +25,15 @@ from pathlib import Path
 from typing import Optional
 
 from .utils import RollbackStack, is_linux, is_macos, is_windows, log, ok
+
+# Upper bound for one system command (nmcli, netplan, ifup, PowerShell...).
+# A hung command raises TimeoutExpired, which triggers the rollback.
+_CMD_TIMEOUT = 60
+
+# Letters, digits, space, dot, colon, underscore and hyphen: enough for Linux
+# (enp0s8, eth0.100), macOS (en0, Wi-Fi) and Windows ("Ethernet 2") names,
+# while keeping quotes and newlines out of config files and PowerShell.
+_IFACE_RE = re.compile(r"[\w .:-]{1,64}")
 
 
 # ── public entry point ────────────────────────────────────────────────────────
@@ -48,6 +59,7 @@ def apply_static_ip(
         rollback:  External RollbackStack to push undo ops onto. Created internally
                    if not supplied.
     """
+    _check_inputs(interface, address, netmask, gateway)
     log.info("Static IP plan: %s → %s / %s  (gateway %s)", interface, address, netmask, gateway)
 
     if not apply:
@@ -79,6 +91,34 @@ def apply_static_ip(
         raise
 
 
+# ── input checks ─────────────────────────────────────────────────────────────
+
+def _check_inputs(interface: str, address: str, netmask: str, gateway: str) -> None:
+    """Raise ValueError before anything is touched, dry-run included.
+
+    The values end up in /etc/network/interfaces, netplan YAML and PowerShell
+    command strings, so they are validated rather than trusted.
+    """
+    if not _IFACE_RE.fullmatch(interface):
+        raise ValueError(f"unsafe or empty interface name: {interface!r}")
+    for label, value in (("address", address), ("gateway", gateway)):
+        try:
+            ipaddress.IPv4Address(value)
+        except ValueError:
+            raise ValueError(f"invalid {label}: {value!r}") from None
+    try:
+        if netmask.count(".") != 3:
+            raise ValueError
+        ipaddress.IPv4Network(f"0.0.0.0/{netmask}")
+    except ValueError:
+        raise ValueError(f"invalid netmask (want dotted form like 255.255.255.0): {netmask!r}") from None
+
+
+def _ps_quote(value: str) -> str:
+    """Quote *value* as a PowerShell single-quoted string literal."""
+    return "'" + value.replace("'", "''") + "'"
+
+
 # ── plan display ─────────────────────────────────────────────────────────────
 
 def _show_plan(interface: str, address: str, netmask: str, gateway: str) -> None:
@@ -104,7 +144,7 @@ def _validate(gateway: str, rb: RollbackStack, timeout: int = 10) -> None:
     )
 
     while time.monotonic() < deadline:
-        result = subprocess.run(ping_cmd, capture_output=True)
+        result = subprocess.run(ping_cmd, capture_output=True, timeout=10)
         if result.returncode == 0:
             ok(f"Connectivity validated: {gateway} is reachable")
             return
@@ -190,8 +230,8 @@ def _apply_interfaces(
     )
     iface_file.write_text(cleaned + stanza)
 
-    subprocess.run(["sudo", "ifdown", interface, "--ignore-errors"], check=False)
-    subprocess.run(["sudo", "ifup", interface], check=True)
+    subprocess.run(["sudo", "ifdown", interface, "--ignore-errors"], check=False, timeout=_CMD_TIMEOUT)
+    subprocess.run(["sudo", "ifup", interface], check=True, timeout=_CMD_TIMEOUT)
 
     ok(f"Static IP applied via /etc/network/interfaces ({interface} = {address})")
 
@@ -225,7 +265,7 @@ def _apply_netplan(
     yaml_path.write_text(yaml_content)
     rb.push(f"remove {yaml_path}", yaml_path.unlink)
 
-    subprocess.run(["sudo", "netplan", "apply"], check=True)
+    subprocess.run(["sudo", "netplan", "apply"], check=True, timeout=_CMD_TIMEOUT)
     ok(f"Static IP applied via Netplan ({interface} = {address}/{prefix})")
 
 
@@ -244,6 +284,7 @@ def _apply_nmcli(
         ["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
         capture_output=True,
         text=True,
+        timeout=_CMD_TIMEOUT,
     )
     prev_conn = next(
         (line.split(":")[0] for line in result.stdout.splitlines() if f":{interface}" in line),
@@ -252,12 +293,13 @@ def _apply_nmcli(
 
     if prev_conn:
         def _restore_conn() -> None:
-            subprocess.run(["nmcli", "connection", "delete", conn_name], check=False)
-            subprocess.run(["nmcli", "connection", "up", prev_conn], check=False)
+            subprocess.run(["nmcli", "connection", "delete", conn_name], check=False, timeout=_CMD_TIMEOUT)
+            subprocess.run(["nmcli", "connection", "up", prev_conn], check=False, timeout=_CMD_TIMEOUT)
         rb.push(f"nmcli restore {prev_conn}", _restore_conn)
 
     # Delete previous toolkit connection if it exists
-    subprocess.run(["nmcli", "connection", "delete", conn_name], check=False, capture_output=True)
+    subprocess.run(["nmcli", "connection", "delete", conn_name], check=False, capture_output=True,
+                   timeout=_CMD_TIMEOUT)
 
     subprocess.run(
         [
@@ -269,8 +311,9 @@ def _apply_nmcli(
             "gw4", gateway,
         ],
         check=True,
+        timeout=_CMD_TIMEOUT,
     )
-    subprocess.run(["nmcli", "connection", "up", conn_name], check=True)
+    subprocess.run(["nmcli", "connection", "up", conn_name], check=True, timeout=_CMD_TIMEOUT)
     ok(f"Static IP applied via nmcli ({interface} = {address}/{prefix})")
 
 
@@ -282,18 +325,11 @@ def _apply_macos(
     netmask: str,
     rb: RollbackStack,
 ) -> None:
-    # Capture current IP for rollback
-    result = subprocess.run(
-        ["networksetup", "-getinfo", interface],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
     def _restore_macos() -> None:
         subprocess.run(
             ["networksetup", "-setdhcp", interface],
             check=False,
+            timeout=_CMD_TIMEOUT,
         )
         log.info("macOS: reverted %s to DHCP", interface)
 
@@ -302,6 +338,7 @@ def _apply_macos(
     subprocess.run(
         ["networksetup", "-setmanual", interface, address, netmask],
         check=True,
+        timeout=_CMD_TIMEOUT,
     )
     ok(f"Static IP applied via networksetup ({interface} = {address})")
 
@@ -315,26 +352,16 @@ def _apply_windows(
     rb: RollbackStack,
 ) -> None:
     prefix = _mask_to_prefix(netmask)
-
-    # Capture current config for rollback
-    ps_get = (
-        f"(Get-NetIPAddress -InterfaceAlias '{interface}' -AddressFamily IPv4 "
-        f"| Select-Object -First 1 | ConvertTo-Json)"
-    )
-    result = subprocess.run(
-        ["powershell", "-NonInteractive", "-Command", ps_get],
-        capture_output=True,
-        text=True,
-    )
-    old_config = result.stdout.strip()
+    alias = _ps_quote(interface)
 
     def _restore_windows() -> None:
         # Re-enable DHCP as the safest rollback on Windows
         subprocess.run(
             ["powershell", "-NonInteractive", "-Command",
-             f"Set-NetIPInterface -InterfaceAlias '{interface}' -Dhcp Enabled; "
-             f"ipconfig /renew '{interface}'"],
+             f"Set-NetIPInterface -InterfaceAlias {alias} -Dhcp Enabled; "
+             f"ipconfig /renew {alias}"],
             check=False,
+            timeout=_CMD_TIMEOUT,
         )
         log.info("Windows: reverted %s to DHCP", interface)
 
@@ -342,17 +369,19 @@ def _apply_windows(
 
     # Remove existing static IP, then add new one
     ps_remove = (
-        f"Remove-NetIPAddress -InterfaceAlias '{interface}' "
+        f"Remove-NetIPAddress -InterfaceAlias {alias} "
         f"-AddressFamily IPv4 -Confirm:$false -ErrorAction SilentlyContinue"
     )
-    subprocess.run(["powershell", "-NonInteractive", "-Command", ps_remove], check=False)
+    subprocess.run(["powershell", "-NonInteractive", "-Command", ps_remove], check=False,
+                   timeout=_CMD_TIMEOUT)
 
     ps_add = (
-        f"New-NetIPAddress -InterfaceAlias '{interface}' "
-        f"-IPAddress '{address}' -PrefixLength {prefix} "
+        f"New-NetIPAddress -InterfaceAlias {alias} "
+        f"-IPAddress {_ps_quote(address)} -PrefixLength {prefix} "
         f"-AddressFamily IPv4"
     )
-    subprocess.run(["powershell", "-NonInteractive", "-Command", ps_add], check=True)
+    subprocess.run(["powershell", "-NonInteractive", "-Command", ps_add], check=True,
+                   timeout=_CMD_TIMEOUT)
     ok(f"Static IP applied via PowerShell ({interface} = {address}/{prefix})")
 
 

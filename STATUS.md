@@ -1,8 +1,15 @@
 # STATUS
 
-_Last updated: 2026-08-25_
+_Last updated: 2026-10-18_
 
 ## Where the project stands
+**2026-10-18: portfolio polish wave in progress (Phases 5 to 9).** The plan fixes what a reviewer
+would hit in the first five minutes, then hardens the Python, widens the tests, adds release
+hygiene and polishes the docs. **All five phases (5 to 9) are done** on branch `ccr-dec6d5a6-417b42`,
+draft PR #3: 74 bats + 103 pytest = 177 tests, `make all` clean as root and as a non-root user, pytest
+clean on Python 3.10 and 3.14, all 6 CI jobs green. The README numbers were recounted against the repo.
+What is left needs the owner: review and merge, tag `v1.0.0`, record the demo, the live-VM checks.
+
 **v1 complete + hardened.** A 5-module DevOps shell toolkit is built, tested and pushed to GitHub as a
 public repo. Now **CI-gated** (shellcheck + bats + pytest + Makefile-parse + ruff — all 5 jobs green),
 **tested** (24 bats + 29 pytest = 53), with a **task runner** (`make` / `tasks.ps1`) and **contributor docs**
@@ -59,20 +66,80 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 - [x] `CONTRIBUTING.md` — setup, checks, tool contract, add-a-tool checklist.
 - [x] README layout tree expanded (tests/docs/CI/task-runner); all 5 CI jobs still green.
 
+## Done (added 2026-10-18), Phase 5: first-impression shell fixes
+- [x] `hr`/`banner` drew broken UTF-8 (byte-wise `tr`); now built with parameter expansion. Tests match exact characters.
+- [x] All 27 `.sh` entry points and `ec2-deploy.py` tracked as `100755` (`lib/common.sh` stays `100644`, it is sourced); bats test guards it; README quick start lost its `chmod` step.
+- [x] `require_root` lets a non-root user preview under `DRY_RUN=1` (D17). README quick start step 4 now works as a normal user.
+- [x] `mkswap.sh`: help example fixed to `sudo DRY_RUN=1` (the old order ran for real); SIZE needs a unit; absolute path required.
+- [x] `pkg.sh search` uses `apt-cache` (was `apt-get search`, exit 100); `pkg.sh update` needs root on apt.
+- [x] `sysinfo.sh` survives a `hostnamectl` that cannot run (containers, WSL); `lscpu`/`free` parsed with `LC_ALL=C`.
+- [x] `pingsweep.sh -h` works without `ping`; `audit-perms.sh --help` exits 0; smoke test covers `-h` and `--help`.
+- [x] `install-jenkins.sh` writes its apt source through `run`; root tools and `pkg.sh` stop claiming success under `DRY_RUN=1`.
+- [x] Review fixes: `mkswap.sh` sizes exact on both paths, symlinks and sub-1M sizes refused; dnf/yum `check-update` failures surface.
+- [x] `setup.sh`/`setup.ps1` run from any directory (PYTHONPATH, not cd).
+- [x] New bats files: `system_monitor.bats`, `docker_devops.bats`, `user_permissions.bats`; `stub()` helper in `helper.bash`.
+
+## Done (added 2026-10-18), Phase 6: Python correctness and safety
+- [x] `cli.py`: `--dry-run` always beats `--apply`; `--apply` asks y/N (`--yes` skips); global flags accepted after the subcommand.
+- [x] `cli.py`: port, keyfile, netmask and remote dir follow flag > env > config > default (port/netmask defaults no longer mask env/config).
+- [x] `network_manager.py`: interface name, IPs and netmask validated before anything runs; PowerShell args quoted; every command has a timeout.
+- [x] `ssh_orchestrator.py`: paramiko `copy_id` sends the key on stdin to one quoted command (no injection, no race); refuses non-POSIX remotes.
+- [x] `payload_executor.py`: `~` expands remotely instead of creating a `~` directory; `BatchMode=yes` + keepalives; timeouts.
+- [x] paramiko clients load known_hosts first (D18). `confirm()` treats a closed stdin as no.
+- [x] `ec2-deploy.py`: y/N before a real launch, `DRY_RUN`/`ASSUME_YES`, lazy boto3, clear region/credential errors, exit 1 on failed waits (D19).
+- [x] ruff gate widened to `E9,F` across CI, Makefile, `tasks.ps1` (D20); pytest now also runs `05-docker-devops/tests`.
+- [x] New pytest files: `test_cli.py`, `test_network_manager.py`, `test_remote.py`, `05-docker-devops/tests/test_ec2_deploy.py`.
+- [x] Verified end to end against a loopback OpenSSH server in the build container (see PROGRESS 2026-10-18).
+
+## Done (added 2026-10-18), Phase 7: shell behaviour tests
+- [x] `tests/bats/file_text.bats`: txtstats, logtop, bigfiles, dirsnap, backup round trip on temp fixtures.
+- [x] `logtop.sh` no longer dies with exit 141 on a log bigger than a pipe buffer, nor exits 1 on an empty filter.
+- [x] `dirsnap.sh` and `bigfiles.sh` survive unreadable subdirectories (and `/proc`).
+- [x] `permfix.sh`: octal modes only, refuses `/`, dry run counts what would change; audit-perms tested on a temp tree.
+- [x] `diskwatch.sh`: no false alarm on snap `/dev/loop*` mounts; mount points with spaces kept whole; tested with a fake `df`.
+- [x] `httpcheck.sh` exits 1 when any endpoint fails (cron/CI health check); tested with a fake `curl`.
+- [x] `docker-clean.sh` fails when the daemon is unreachable (was "already tidy"); plan shows created/dead with `-f`.
+
+## Done (added 2026-10-18), Phase 8: repo hygiene and release
+- [x] `action-shellcheck` pinned to `2.0.0` (was `@master`); `pytest`/`ruff` pinned in `requirements-dev.txt`, used by CI.
+- [x] Every CI job has a timeout; concurrency cancels superseded runs; `workflow_dispatch` added; actionlint clean.
+- [x] pytest matrix: Python 3.10 and 3.14. Supported floor is now 3.10 in setup scripts and docs (was an untested 3.8).
+- [x] `.github/dependabot.yml` for actions and the three pip requirement files.
+- [x] `CHANGELOG.md` (1.0.0) and `.github/workflows/release.yml` (tag-driven, D21); `SECURITY.md`.
+
+## Done (added 2026-10-18), Phase 9: docs polish
+- [x] README: every number recounted (177 tests, 6 CI checks, 25 tools); Quality & CI table, Development
+      targets, roadmap and layout tree match the repo; safety model covers the non-root dry run and links
+      `SECURITY.md`; release and Python 3.10+ badges.
+- [x] Em dash separators removed from README, CONTRIBUTING, DEMO and module READMEs; sentences left broken by
+      an earlier dash removal repaired; README no longer names internal working files.
+- [x] Module READMEs and CONTRIBUTING describe current behaviour and the add-a-tool checklist (exec bit,
+      behaviour tests with `stub`, CHANGELOG line).
+
 ## Open / not done (user steps — need a human + real hardware)
 - [ ] Record `docs/demo.cast` / `demo.gif` from a live terminal and embed the GIF in the README.
 - [ ] `ssh_toolkit` live-VM smoke test (needs a real two-VM lab).
 - [x] Repo-name mismatch resolved — canonical name is `5-DevOps-Toolkit` (the remote); all docs aligned (D16).
 
 ## Next best action
-The 4-phase upgrade is complete. Remaining items all need a human:
-1. Record the demo GIF (`docs/DEMO.md`) and embed it in the README.
-2. Copy `config.example.toml` → `config.toml`, fill in host/user; run `./setup.sh all …` on a Linux VM.
+1. Owner: review PR #3 and merge it (squash or merge commit, owner's choice).
+2. Owner, after the merge: push the `v1.0.0` tag on `main` (`git tag -a v1.0.0 -m v1.0.0 && git push origin v1.0.0`);
+   enable Settings > Code security > Private vulnerability reporting, which `SECURITY.md` points to.
+3. Human steps after the merge: record the demo GIF (only now that banners render correctly),
+   push the `v1.0.0` tag, run `ssh_toolkit` against a real two-VM lab.
 
 ## Blockers / waiting on
 None.
 
 ## Needs review
+`net --apply` backends (netplan, nmcli, ifupdown, macOS, Windows) were changed only by adding input
+checks, quoting and timeouts, and were not run: that needs a VM whose NIC can be lost safely. The macOS
+`networksetup -setmanual` call still lacks the router argument, and the macOS/Windows rollback reverts to
+DHCP rather than the previous static config. Both are known, untested-on-hardware gaps.
+
+`04-network-ssh/setup.ps1` and `tasks.ps1` were verified with PowerShell 7.4 on Linux, not with Windows
+PowerShell 5.1. Run `.\setup.ps1 --help` and `.\tasks.ps1 all` once on the Windows box.
+
 Destructive/root scripts (`newuser.sh`, `mkswap.sh`, `pkg.sh`, `install-jenkins.sh`, `grant-sudo.sh`) were
 verified via `-h` and `DRY_RUN` only — they were **not** executed against a live system. Run them in a
 throwaway VM/WSL before relying on them.

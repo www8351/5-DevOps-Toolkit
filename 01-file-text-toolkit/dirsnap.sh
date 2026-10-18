@@ -90,12 +90,15 @@ main() {
     c_warn "No subdirectories found under $abs"
   else
     # du -sh on every subdir, sort by human-readable size descending, take top N.
-    du -sh "${subdirs[@]}" 2>/dev/null | sort -rh | head -n "$top"
+    # du exits 1 when it meets an unreadable entry but still prints the sizes it
+    # could read; with pipefail that status would abort the script, so it is
+    # tolerated. awk takes the top N without closing the pipe early like head.
+    { du -sh "${subdirs[@]}" 2>/dev/null || true; } | sort -rh | awk -v n="$top" 'NR <= n'
   fi
 
   hr
   local total
-  total="$(du -sh "$target" 2>/dev/null | cut -f1)"
+  total="$(du -sh "$target" 2>/dev/null | cut -f1)" || true
   c_ok "Total size of $abs: ${total:-unknown}"
 }
 

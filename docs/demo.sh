@@ -47,7 +47,7 @@ main() {
     *) die "unexpected argument: $1 (try -h)" ;;
   esac
 
-  banner "5-DevOps-Toolkit — read-only demo"
+  banner "5-DevOps-Toolkit: read-only demo"
   c_info "every step below is safe: no root, no writes, no network changes"
   hr
 

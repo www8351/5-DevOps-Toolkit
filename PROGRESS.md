@@ -4,6 +4,186 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18: Phase 9, docs polish (wave complete)
+
+**Goal:** Every claim in the docs matches the repo, in the house style.
+
+**What was done**
+- README: recounted every number from the repo (74 bats + 103 pytest = 177 tests; 6 CI jobs with the
+  pytest matrix; 25 tools); rewrote the Quality & CI table, Development targets, roadmap (shipped vs
+  planned) and layout tree; safety model gained the non-root dry run, the `sudo DRY_RUN=1` order, the
+  health-check exit codes and the Python prompts, linking `SECURITY.md`; release and Python 3.10+ badges.
+- Removed em dash separators across README, CONTRIBUTING, DEMO and module READMEs (Hebrew lines included).
+  An earlier manual dash removal had left sentences without punctuation ("themselves it's", "lib/common.sh
+  a single shared engine", the skills list); repaired. The layout tree no longer names `CLAUDE_MEMORY.md`.
+- Module READMEs: httpcheck exit code, docker-clean daemon check, non-root dry run, fixed the
+  `ssh_toolkit` anchor after its heading changed. CONTRIBUTING: add-a-tool checklist now covers the exec
+  bit, behaviour tests with `stub`, and a CHANGELOG line.
+- `CLAUDE_MEMORY.md`: stack (Python 3.10+, pinned tools), the pipefail and dry-run rules learned in this
+  wave, test and release conventions, docs style.
+
+**Wave summary (Phases 5 to 9, all on PR #3)**
+Fix first, then showcase. 24 bats + 29 pytest became 74 + 103; the tests forced about twenty real fixes
+(two safety bugs in `mkswap.sh`, a `--dry-run` that did not stop `net --apply`, remote command injection,
+host keys accepted blindly, tools dying silently under pipefail, health checks exiting 0). CI pinned and
+matrixed, releases tag-driven. Owner steps: merge, tag `v1.0.0`, enable private vulnerability reporting,
+record the demo, run the live-VM checks.
+
+**Verification**
+- `make all` clean; bats clean as `nobody`; CI green on all 6 jobs for the Phase 8 head before this entry.
+
+## 2026-10-18: Phase 8, repo hygiene and release
+
+**Goal:** The signals of a maintained project: pinned dependencies, a version, a changelog, a release path.
+
+**What was done**
+- CI: `ludeeus/action-shellcheck@master` pinned to `2.0.0`; the lint job installs the pinned
+  `requirements-dev.txt` (`pytest==9.1.1`, `ruff==0.17.1`, `tomli` below 3.11) instead of an unpinned ruff;
+  `timeout-minutes` on every job; `concurrency` with cancel-in-progress; `workflow_dispatch`.
+- pytest matrix on Python 3.10 and 3.14. The documented and enforced floor moved from 3.8 (never tested;
+  past end of life) to 3.10.
+- `.github/dependabot.yml`: weekly updates for actions and pip (`/`, `/04-network-ssh`, `/05-docker-devops`).
+- `CHANGELOG.md` with a 1.0.0 entry; `.github/workflows/release.yml` publishes the section for a pushed
+  `vX.Y.Z` tag via `gh release create`; `SECURITY.md` (private reporting, safe-use rules). D21 recorded.
+
+**What was tried / found**
+- actionlint flagged the existing `$(find ...)` and unquoted target lists in `python.yml`; py_compile now
+  uses `find -exec`, the intended splitting is annotated.
+- The first awk extraction for release notes ran past the 1.0.0 section into the link references at the
+  bottom of the changelog; it now stops there. Tested with the exact workflow snippet: 56 lines for 1.0.0,
+  empty (so the job fails) for an unknown version.
+
+**Verification**
+- pytest 103/103 on Python 3.10 and 3.14 (uv-managed interpreters); `make all` clean; actionlint clean on
+  all three workflows; YAML of `dependabot.yml` parses.
+- Not verifiable here: the release workflow itself runs only on a pushed tag (owner step), and private
+  vulnerability reporting must be switched on in the repository settings.
+
+## 2026-10-18: Phase 7, shell behaviour tests
+
+**Goal:** Grow the test count with tests of real behaviour, not only `-h`, and fix what they find.
+
+**What was done**
+- New bats files per module: `file_text.bats`, `network_ssh.bats`, plus additions to `system_monitor`,
+  `user_permissions` and `docker_devops`. Read-only tools run on temp fixtures; tools that read the system
+  (`df`, `curl`, `docker`) get a stub on PATH.
+- Fixes the tests forced (each test was seen failing on the old code first):
+  - `logtop.sh`: `sort | head` under pipefail died with exit 141 once the unique values passed 64 KiB (a
+    100k-line log); a `-p` filter with no match exited 1. awk now takes the top N; grep's "no match" is OK.
+  - `dirsnap.sh`: one unreadable subdirectory (or `/proc`) aborted before the total.
+  - `bigfiles.sh`: find's exit 1 on an unreadable directory was read as "no -printf", switching to the
+    macOS-incompatible `du -b` path.
+  - `permfix.sh`: any MODE string was accepted, `/` was not refused, and the dry run did not say what
+    would change.
+  - `diskwatch.sh`: snap squashfs loop mounts (always 100%) made it alarm on every Ubuntu desktop; mount
+    points with spaces were cut at the space.
+  - `httpcheck.sh`: exit 0 even with failed endpoints.
+  - `docker-clean.sh`: a stopped daemon was reported as "already tidy"; with `-f` the plan hid the
+    created/dead containers it was about to remove; dry run claimed "removed".
+
+**What was tried / found**
+- The first fake `docker` stub matched `-q` while the script passes `-aq`, so two tests passed for the
+  wrong reason. Caught by asserting the whole dry-run line, stub fixed, and the tests re-run against the
+  old script to confirm they fail there.
+- Unreadable-directory tests skip as root (root reads everything) and run on the non-root CI runner; they
+  were also run here as `nobody`.
+
+**Verification**
+- `make all`: shellcheck, `bash -n`, ruff, 74 bats, 103 pytest, all clean. Bats also clean as `nobody`.
+
+## 2026-10-18: Phase 6, Python correctness and safety
+
+**Goal:** Make `ssh_toolkit` and `ec2-deploy.py` hold up to a security-minded reader.
+
+**What was done (each fix landed test first)**
+- `cli.py`: `--dry-run` now always beats `--apply` (it was ignored by `net`, so a "dry" run reconfigured
+  the NIC). `--apply` asks y/N; `--yes` finally has a job. Parser defaults for `--port`, `--netmask` and
+  `--remote-dir` used to shadow `SSHTK_*` env and `config.toml`; `--keyfile` ignored both. All now go
+  through `resolve()`. Global flags are accepted after the subcommand (SUPPRESS-default parent parser).
+- `network_manager.py`: inputs validated (`ipaddress`, contiguous dotted mask, a safe interface-name
+  pattern) before anything runs, dry run included; PowerShell arguments quoted; timeouts everywhere;
+  two dead "capture for rollback" calls removed.
+- `ssh_orchestrator.py`: the paramiko `copy_id` fallback no longer interpolates the key into
+  `echo "..."`; the key goes on stdin to a single `umask 077 && mkdir && chmod && cat >>` command.
+- `payload_executor.py`: a quoted `~` was never expanded, so the demo created a directory named `~`.
+  Paths now map `~` to `"$HOME"`; SFTP paths drop `~/`. Native ssh/scp gained `BatchMode=yes` and
+  keepalives; every subprocess call has a timeout.
+- `utils.py`: `ssh_client()` (known_hosts first, D18), `remote_exec()` (stdin, reads before exit status),
+  `confirm()` returns False on EOF.
+- `ec2-deploy.py`: y/N before a billed launch, `DRY_RUN`/`ASSUME_YES`, lazy boto3, region and credential
+  errors explained, exit 1 when a wait fails, `requirements.txt` with boto3 (D19).
+- ruff widened to `E9,F` in all three runners (D20). pytest gained `05-docker-devops/tests`.
+
+**What was tried / found**
+- Plan numbering shifted: the ruff widening took D20, so the release decision in Phase 8 becomes D21.
+- A loopback OpenSSH 9.6 server was installed in the build container (not committed) to exercise the
+  paramiko and native paths for real. It found nothing new in the code; the first SFTP attempt failed
+  only because the ad-hoc `sshd_config` lacked a `Subsystem sftp` line.
+- Native `scp` to a remote directory that does not exist still fails (scp never creates parents); the
+  paramiko path creates them. That matches each tool's own semantics and was left as is.
+- While checking `ec2-deploy.py` error paths, one run with `--region us-east-1 --yes` reached AWS using
+  credentials present in the build container's environment. AWS answered `AuthFailure`; nothing was
+  launched. Later runs used a clean environment.
+
+**Verification**
+- `make all`: shellcheck, `bash -n`, ruff `E9,F`, 42 bats, 103 pytest, all clean.
+- Loopback sshd: paramiko `copy_id` with a key comment `evil"; touch /tmp/pwned; echo "` appended the key,
+  ran nothing, and was a no-op the second time; `~/.ssh` 700, `authorized_keys` 600; SFTP to
+  `~/sub/dir/`; `run_demo` into `~/demo_ssh` and `~/demo two`; native `connect`, `demo` and `transfer`
+  through the CLI with `SSHTK_PORT=2222` from env; a wrong known_hosts key raised `BadHostKeyException`.
+- `ec2-deploy.py` with real boto3: missing region, missing credentials and a declined prompt each print a
+  one-line reason and exit 1.
+
+## 2026-10-18: Phase 5, first-impression shell fixes (portfolio polish wave)
+
+**Goal:** Nothing a reviewer runs in the first five minutes should be broken. Fix before showcasing:
+recording the demo or cutting a release first would have shown broken output.
+
+**How the work was found**
+- A read-only audit of every script and Python module, then each finding reproduced before fixing.
+- `make all` on a fresh Ubuntu 24.04 container failed before any change: `pingsweep.sh -h` exits 1
+  without `ping`, and the `require_root` test assumed a non-root runner.
+
+**What was done (each fix landed test first)**
+- `lib/common.sh`: `hr`/`banner` used `tr ' ' '─'`, which swaps bytes, so every rule printed lone 0xE2
+  bytes. Rebuilt with parameter expansion. `require_root` now allows a `DRY_RUN=1` preview (D17).
+- Tracked every entry point as executable; new bats test; README quick start no longer needs `chmod`.
+- `mkswap.sh`: the help example `DRY_RUN=1 sudo ...` ran for real (sudo drops the variable); a size with
+  no unit meant bytes on one path and MiB on the other; relative paths reached `/etc/fstab`. All closed.
+- `pkg.sh search` used the nonexistent `apt-get search`; `pkg.sh update` had no root check.
+- `sysinfo.sh` died when `hostnamectl` exists but systemd does not. `lscpu`/`free` parsed under `LC_ALL=C`.
+- `pingsweep.sh` and `audit-perms.sh` help fixes; the smoke test now runs `-h` and `--help`.
+- `install-jenkins.sh` apt source write moved onto `run`; root tools stop saying "created"/"finished"
+  during a dry run.
+- `setup.sh`/`setup.ps1` failed with "No module named ssh_toolkit" outside `04-network-ssh`.
+
+**What was tried / found**
+- The plan said "cd into the script directory" for the setup scripts. PYTHONPATH was used instead: a cd
+  would change what relative CLI paths point to. Config lookup is already package-relative.
+- `mkswap.sh` first accepted leading zeros in SIZE; bash reads `010` as octal (8), so the regex now
+  forbids them.
+- New bats files stub external tools on PATH with a small `stub()` helper, which keeps every test
+  host-safe (no account, swap or package change) and keeps D12's child-shell rule.
+
+**Verification**
+- `make all` clean: shellcheck, `bash -n` (28 scripts), ruff, 42 bats, 29 pytest. The bats suite also
+  passes as `nobody`, matching the non-root CI runner.
+- Manual: `DRY_RUN=1 mkswap.sh -s 1G -f /tmp/demo.swap` as `nobody` previews and exits 0;
+  `pkg.sh search curl` works; `sysinfo.sh` exits 0 in a systemd-less container; `setup.sh --help` works
+  from the repo root and from `/tmp`.
+- Not verified at first: `setup.ps1` (no PowerShell in this environment). See the review follow-up below.
+
+**Review follow-up (same day, before the first push)**
+- An adversarial review of the Phase 5 diff found one bug and several risks, all fixed with tests:
+  `pkg.sh` still printed "install complete" etc. under `DRY_RUN=1`; dnf/yum `check-update || true` hid
+  real failures; `mkswap.sh` made 1.5 MiB or 2 MiB for `-s 1536K` depending on the path, could overflow
+  on a huge G value, and as root would follow a dangling symlink at `-f`; `setup.ps1` leaked PYTHONPATH
+  into the caller's session; `newuser`/`grant-sudo` help still said "Must run as root".
+- Not changed: banner width under a C locale with a non-ASCII title (no such title remains after the demo
+  title went ASCII).
+- A portable PowerShell 7.4 was downloaded into the scratch area: `setup.ps1 --help` works from `/tmp`
+  and restores PYTHONPATH; `tasks.ps1 all` passes. Windows PowerShell 5.1 itself remains untested.
+
 ## 2026-08-25 — README accuracy audit (tool count corrected)
 
 **What was done**

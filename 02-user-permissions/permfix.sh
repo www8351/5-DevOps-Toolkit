@@ -20,14 +20,15 @@ Arguments:
   PATH            file tree to normalise (required, must exist)
 
 Options:
-  --dirs MODE    mode to apply to directories (default: 755)
-  --files MODE   mode to apply to files (default: 644)
+  --dirs MODE    octal mode to apply to directories (default: 755)
+  --files MODE   octal mode to apply to files (default: 644)
   -o OWNER[:GRP] also chown the tree to OWNER (optionally OWNER:GROUP)
   --execute      actually apply changes (DEFAULT IS DRY-RUN)
   -h, --help     show this help and exit
 
 Notes:
-  Dry-run by default: prints what would change. Pass --execute to apply.
+  Dry-run by default: counts what would change and prints the commands.
+  Pass --execute to apply. Refuses to run on / itself.
   Honours DRY_RUN=1 and ASSUME_YES=1. Changing owner to another user needs root.
 EOF
 }
@@ -52,6 +53,13 @@ main() {
 
   [[ -n "$target" ]] || { usage; die "missing required argument: PATH"; }
   [[ -e "$target" ]] || die "path does not exist: $target"
+  # Octal only: find -perm needs it for the dry-run count, and a typo such as
+  # 999 should fail here rather than halfway through the tree.
+  [[ "$dmode" =~ ^[0-7]{3,4}$ ]] || die "--dirs MODE must be octal, e.g. 755 (got '$dmode')"
+  [[ "$fmode" =~ ^[0-7]{3,4}$ ]] || die "--files MODE must be octal, e.g. 644 (got '$fmode')"
+  if [[ -d "$target" && "$(cd "$target" && pwd -P)" == "/" ]]; then
+    die "refusing to normalise modes across the whole filesystem (/)"
+  fi
 
   need_cmd find
   need_cmd chmod
@@ -68,6 +76,12 @@ main() {
   [[ -n "$owner" ]] && c_info "owner     : $owner"
   if [[ "${DRY_RUN:-0}" == "1" ]]; then
     c_warn "DRY-RUN: no changes will be made (pass --execute to apply)"
+    # Exact-mode match: entries already at the target mode are not counted.
+    # Unreadable parts are skipped rather than aborting the preview.
+    local nd nf
+    nd="$({ find "$target" -type d ! -perm "$dmode" 2>/dev/null || true; } | wc -l)"
+    nf="$({ find "$target" -type f ! -perm "$fmode" 2>/dev/null || true; } | wc -l)"
+    c_info "would change: ${nd//[[:space:]]/} directory(ies), ${nf//[[:space:]]/} file(s)"
   fi
 
   # If we are really applying changes that touch ownership for someone else, need root.

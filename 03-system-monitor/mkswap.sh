@@ -21,8 +21,9 @@ it as swap, and enables it. With --persist it also adds an /etc/fstab entry
 so the swapfile survives reboots.
 
 Options:
-  -s SIZE        swapfile size, e.g. 512M, 2G (required)
-  -f FILE        swapfile path (default: /swapfile)
+  -s SIZE        swapfile size with a K, M or G unit, at least 1M,
+                 e.g. 512M, 2G (required)
+  -f FILE        absolute swapfile path (default: /swapfile)
   --persist      append an /etc/fstab entry so swap is enabled on boot
   -h, --help     show this help and exit
 
@@ -33,7 +34,11 @@ Honoured environment toggles:
 Examples:
   sudo $0 -s 2G
   sudo $0 -s 1G -f /var/swapfile --persist
-  DRY_RUN=1 sudo $0 -s 4G --persist
+  sudo DRY_RUN=1 $0 -s 4G --persist
+
+Put DRY_RUN=1 after sudo: sudo resets the environment, so a variable set
+before it never reaches the script. A normal user can also preview with
+DRY_RUN=1 and no sudo at all.
 EOF
 }
 
@@ -55,9 +60,17 @@ main() {
   done
 
   [[ -n "$size" ]] || die "missing required option -s SIZE (try -h)"
-  # Accept sizes like 512M, 2G, 1048576 (bytes) — a digit run with optional unit.
-  [[ "$size" =~ ^[0-9]+([KkMmGg])?$ ]] \
-    || die "invalid SIZE '$size' (examples: 512M, 2G)"
+  # The unit is mandatory: fallocate would read a bare number as bytes while
+  # the dd fallback reads it as MiB, so 1048576 could mean 1 MiB or 1 TiB.
+  # At most 9 digits keeps the KiB arithmetic far from 64-bit overflow.
+  [[ "$size" =~ ^[1-9][0-9]{0,8}[KkMmGg]$ ]] \
+    || die "invalid SIZE '$size' (needs a K, M or G unit, e.g. 512M, 2G)"
+  local kib
+  kib="$(size_to_kib "$size")"
+  # mkswap rejects tiny files, so refuse before anything is allocated.
+  [[ "$kib" -ge 1024 ]] || die "SIZE '$size' is too small (minimum 1M)"
+  # swapon and the fstab entry both need an absolute path.
+  [[ "$file" == /* ]] || die "swapfile path must be absolute: $file"
 
   require_root
 
@@ -65,8 +78,11 @@ main() {
   need_cmd swapon
   need_cmd chmod
 
-  # Guard: never clobber an existing path or re-add an active swapfile.
-  [[ -e "$file" ]] && die "refusing to overwrite existing path: $file"
+  # Guard: never clobber an existing path or re-add an active swapfile. -L
+  # also catches a dangling symlink, which root would otherwise follow.
+  if [[ -e "$file" || -L "$file" ]]; then
+    die "refusing to overwrite existing path: $file"
+  fi
   if swapon --show 2>/dev/null | awk '{print $1}' | grep -Fxq "$file"; then
     die "swap already active for: $file"
   fi
@@ -82,11 +98,11 @@ main() {
   if command -v fallocate >/dev/null 2>&1; then
     if ! run fallocate -l "$size" "$file"; then
       c_warn "fallocate failed — falling back to dd"
-      dd_allocate "$size" "$file"
+      dd_allocate "$kib" "$file"
     fi
   else
     c_warn "fallocate not found — using dd"
-    dd_allocate "$size" "$file"
+    dd_allocate "$kib" "$file"
   fi
 
   run chmod 600 "$file"
@@ -97,29 +113,36 @@ main() {
     persist_fstab "$file"
   fi
 
-  c_ok "swapfile ready: $file"
-  command -v swapon >/dev/null 2>&1 && run swapon --show
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    c_info "dry run finished: nothing was changed"
+  else
+    c_ok "swapfile ready: $file"
+    swapon --show
+  fi
 }
 
-# dd_allocate SIZE FILE — write a zero-filled file when fallocate is unavailable.
-# Converts a K/M/G suffixed SIZE into a whole number of 1 MiB blocks.
+# dd_allocate KIB FILE — write a zero-filled file when fallocate is unavailable.
+# Writes exactly KIB KiB, the same size fallocate would have made.
 dd_allocate() {
-  local size="$1" file="$2" mib
+  local kib="$1" file="$2"
   need_cmd dd
-  mib="$(size_to_mib "$size")"
-  [[ "$mib" -ge 1 ]] || die "computed swap size is under 1 MiB: $size"
-  run dd if=/dev/zero of="$file" bs=1M count="$mib" status=progress
+  if (( kib % 1024 == 0 )); then
+    run dd if=/dev/zero of="$file" bs=1M count="$(( kib / 1024 ))" status=progress
+  else
+    run dd if=/dev/zero of="$file" bs=1K count="$kib" status=progress
+  fi
 }
 
-# size_to_mib SIZE — echo the size expressed in whole mebibytes.
-size_to_mib() {
+# size_to_kib SIZE — echo a K/M/G suffixed SIZE in KiB. The 10# prefix keeps
+# bash from reading digits as octal.
+size_to_kib() {
   local s="$1" num unit
   num="${s%[KkMmGg]}"
   unit="${s#"$num"}"
   case "$unit" in
-    K|k) echo $(( (num + 1023) / 1024 )) ;;   # round K up to whole MiB
-    M|m|"") echo "$num" ;;
-    G|g) echo $(( num * 1024 )) ;;
+    K|k) echo $(( 10#$num )) ;;
+    M|m) echo $(( 10#$num * 1024 )) ;;
+    G|g) echo $(( 10#$num * 1024 * 1024 )) ;;
     *) die "cannot convert size: $s" ;;
   esac
 }

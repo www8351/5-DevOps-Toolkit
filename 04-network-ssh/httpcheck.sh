@@ -21,6 +21,9 @@ Options:
   -h, --help     show this help and exit
 
 Uses curl when available, otherwise falls back to wget --spider. Read-only.
+
+Exit status is 0 when every URL answers 2xx/3xx and 1 otherwise, so the
+script works as a cron or CI health check.
 EOF
 }
 
@@ -99,6 +102,7 @@ main() {
 
   hr
   c_info "summary: ${ok} ok, ${bad} failed, ${#urls[@]} total"
+  [[ "$bad" -eq 0 ]]
 }
 
 main "$@"

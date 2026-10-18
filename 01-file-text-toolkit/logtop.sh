@@ -104,23 +104,27 @@ main() {
   fi
   awk_cmd+=(-v "f=$field" '{ if (NF >= f && $f != "") print $f }')
 
+  # The last awk keeps the top N itself instead of `head`: head would close the
+  # pipe early, sort would die of SIGPIPE, and pipefail would abort the script.
+  local -a top_n=(awk -v n="$top"
+    'NR <= n { c=$1; $1=""; sub(/^ /,""); printf "%-10s | %s\n", c, $0 }')
+
   printf '%-10s | %s\n' "COUNT" "VALUE"
   hr
   if [[ -n "$pattern" ]]; then
-    grep -e "$pattern" -- "$file" \
+    # grep exits 1 when nothing matches; that is an empty result, not an error.
+    { grep -e "$pattern" -- "$file" || [[ $? -eq 1 ]]; } \
       | "${awk_cmd[@]}" \
       | sort \
       | uniq -c \
       | sort -rn \
-      | head -n "$top" \
-      | awk '{ c=$1; $1=""; sub(/^ /,""); printf "%-10s | %s\n", c, $0 }'
+      | "${top_n[@]}"
   else
     "${awk_cmd[@]}" "$file" \
       | sort \
       | uniq -c \
       | sort -rn \
-      | head -n "$top" \
-      | awk '{ c=$1; $1=""; sub(/^ /,""); printf "%-10s | %s\n", c, $0 }'
+      | "${top_n[@]}"
   fi
 
   hr

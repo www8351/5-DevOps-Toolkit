@@ -92,14 +92,16 @@ main() {
   fi
 
   # Capture "<bytes>\t<path>" lines from find. Prefer GNU -printf for speed;
-  # if it is unsupported, fall back to 'du -b' via -exec.
+  # if it is unsupported, fall back to 'du -b' via -exec. Support is probed on
+  # its own: find also exits 1 for an unreadable subdirectory, and that must
+  # not be mistaken for a missing -printf. Unreadable parts are skipped.
   local raw=""
-  if raw="$(find "${find_args[@]}" -printf '%s\t%p\n' 2>/dev/null)"; then
-    : # GNU find succeeded
+  if find "$target" -maxdepth 0 -printf '' >/dev/null 2>&1; then
+    raw="$(find "${find_args[@]}" -printf '%s\t%p\n' 2>/dev/null || true)"
   else
     need_cmd du
     c_warn "find -printf unsupported here; falling back to du -b"
-    raw="$(find "${find_args[@]}" -exec du -b {} + 2>/dev/null)"
+    raw="$(find "${find_args[@]}" -exec du -b {} + 2>/dev/null || true)"
   fi
 
   if [[ -z "$raw" ]]; then
@@ -117,7 +119,7 @@ main() {
     [[ -n "$bytes" ]] || continue
     human="$(humanize "$bytes")"
     printf '%-12s | %s\n' "$human" "$path"
-  done < <(printf '%s\n' "$raw" | sort -rn | head -n "$top")
+  done < <(printf '%s\n' "$raw" | sort -rn | awk -v n="$top" 'NR <= n')
 
   hr
   c_ok "Listed up to $top largest file(s) under $target"

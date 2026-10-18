@@ -70,10 +70,23 @@ in_common() {
 }
 
 @test "require_root refuses a non-root user" {
-  # CI runs as a non-root user, so require_root must reject.
-  in_common 'require_root'
+  # Stub id so the result does not depend on the runner's real uid.
+  in_common 'id() { echo 1000; }; require_root'
   [ "$status" -eq 1 ]
   [[ "$output" == *"needs root"* ]]
+}
+
+@test "require_root passes for root" {
+  in_common 'id() { echo 0; }; require_root && echo continued'
+  [ "$status" -eq 0 ]
+  [ "$output" = "continued" ]
+}
+
+@test "require_root lets a non-root user preview under DRY_RUN=1" {
+  run bash -c "source \"\$COMMON\"; id() { echo 1000; }; DRY_RUN=1 require_root && echo continued"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"preview only"* ]]
+  [[ "$output" == *"continued"* ]]
 }
 
 # ── run (DRY_RUN) ─────────────────────────────────────────────────────────────
@@ -132,16 +145,19 @@ in_common() {
 }
 
 # ── presentation & sourcing ───────────────────────────────────────────────────
-@test "banner renders the title" {
+@test "banner draws a closed box around the title" {
   in_common 'banner Hi'
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Hi"* ]]
+  [ "${lines[0]}" = "┌──────┐" ]
+  [ "${lines[1]}" = "│  Hi  │" ]
+  [ "${lines[2]}" = "└──────┘" ]
 }
 
-@test "hr prints a rule" {
-  in_common 'hr'
+@test "hr draws COLUMNS box-drawing characters" {
+  # Exact match: a byte-wise rule (tr) would print broken UTF-8 instead.
+  run bash -c "source \"\$COMMON\"; COLUMNS=5 hr"
   [ "$status" -eq 0 ]
-  [ -n "$output" ]
+  [ "$output" = "─────" ]
 }
 
 @test "double-sourcing is a no-op guard" {

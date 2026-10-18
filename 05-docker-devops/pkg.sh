@@ -20,7 +20,7 @@ Subcommands:
   install PKG...   install one or more packages   (root + confirm)
   upgrade          upgrade all installed packages  (root + confirm)
   remove PKG...    remove one or more packages     (root + confirm)
-  update           refresh the package index       (read-only)
+  update           refresh the package index       (root with apt-get)
   search TERM      search the repositories         (read-only)
 
 Options:
@@ -44,6 +44,15 @@ detect_pm() {
     fi
   done
   die "no supported package manager found (need apt-get, dnf or yum)"
+}
+
+# done_ok MSG — report success, unless this was only a DRY_RUN preview.
+done_ok() {
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    c_info "dry run finished: nothing was changed"
+  else
+    c_ok "$1"
+  fi
 }
 
 main() {
@@ -81,7 +90,7 @@ main() {
       require_root
       confirm "Install with $pm: $* ?" || { c_warn "aborted"; exit 0; }
       run "$pm" install -y "$@"
-      c_ok "install complete"
+      done_ok "install complete"
       ;;
     upgrade)
       [[ $# -eq 0 ]] || die "upgrade takes no arguments"
@@ -91,27 +100,38 @@ main() {
         apt-get) run "$pm" upgrade -y ;;
         dnf|yum) run "$pm" upgrade -y ;;
       esac
-      c_ok "upgrade complete"
+      done_ok "upgrade complete"
       ;;
     remove)
       [[ $# -ge 1 ]] || die "remove requires at least one package name"
       require_root
       confirm "Remove with $pm: $* ?" || { c_warn "aborted"; exit 0; }
       run "$pm" remove -y "$@"
-      c_ok "remove complete"
+      done_ok "remove complete"
       ;;
     update)
       [[ $# -eq 0 ]] || die "update takes no arguments"
       case "$pm" in
-        apt-get) run "$pm" update ;;
-        dnf)     run "$pm" check-update || true ;;
-        yum)     run "$pm" check-update || true ;;
+        apt-get) require_root; run "$pm" update ;;
+        dnf|yum)
+          # check-update exits 100 when updates are available; only other
+          # non-zero codes are real failures.
+          local rc=0
+          run "$pm" check-update || rc=$?
+          [[ "$rc" -eq 0 || "$rc" -eq 100 ]] || die "$pm check-update failed (exit $rc)"
+          ;;
       esac
-      c_ok "index refreshed"
+      done_ok "index refreshed"
       ;;
     search)
       [[ $# -eq 1 ]] || die "search requires exactly one term"
-      run "$pm" search "$1"
+      # A query, not a change to installed packages, so it bypasses `run` and
+      # still answers under DRY_RUN=1 (dnf/yum may refresh their metadata cache).
+      # apt-get has no search command; apt-cache does.
+      case "$pm" in
+        apt-get) need_cmd apt-cache; apt-cache search "$1" ;;
+        dnf|yum) "$pm" search "$1" ;;
+      esac
       ;;
     *)
       die "unknown subcommand: $sub (try --help)"

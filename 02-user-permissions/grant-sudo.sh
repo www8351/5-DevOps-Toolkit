@@ -21,7 +21,8 @@ Options:
   -h, --help     show this help and exit
 
 Notes:
-  Must run as root. Auto-detects 'sudo' group, falling back to 'wheel'.
+  Needs root; DRY_RUN=1 previews without it. Auto-detects the 'sudo'
+  group, falling back to 'wheel'.
   Honours DRY_RUN=1 and ASSUME_YES=1.
 EOF
 }
@@ -70,7 +71,7 @@ main() {
   confirm "Add user '$user' to group '$admin_group'?" || die "aborted by user"
 
   run usermod -aG "$admin_group" "$user"
-  c_ok "added '$user' to '$admin_group'"
+  [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "added '$user' to '$admin_group'"
 
   hr
   if [[ "${DRY_RUN:-0}" != "1" ]]; then
