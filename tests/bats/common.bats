@@ -226,6 +226,11 @@ in_common() {
   [ "$output" = "True" ]
 }
 
+@test "json_num passes numbers through and turns anything else into null" {
+  in_common 'json_num 42; echo; json_num 1.25; echo; json_num -3; echo; json_num ""; echo; json_num 1e3; echo; json_num 12abc'
+  [ "$output" = $'42\n1.25\n-3\nnull\nnull\nnull' ]
+}
+
 # ── presentation & sourcing ───────────────────────────────────────────────────
 @test "banner draws a closed box around the title" {
   in_common 'banner Hi'

@@ -19,6 +19,7 @@
 #   confirm_or_abort "question"    confirm, or exit 1 saying nothing changed
 #   run CMD...                     exec, or just echo when DRY_RUN=1
 #   json_str STRING                print STRING as a quoted JSON string
+#   json_num VALUE                 print VALUE if it is a plain number, else null
 #   hr                             terminal-wide horizontal rule
 #   banner "TITLE"                 boxed section header
 #
@@ -140,6 +141,12 @@ json_str() {
     s="$out"
   fi
   printf '"%s"' "$s"
+}
+
+# json_num VALUE — print VALUE as a JSON number, or null when it is not a plain
+# decimal number (empty, "?", "000" style placeholders are callers' business).
+json_num() {
+  if [[ "$1" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then printf '%s' "$1"; else printf 'null'; fi
 }
 
 # ---- presentation ------------------------------------------------------------
