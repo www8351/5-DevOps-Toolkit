@@ -28,6 +28,10 @@ Options (accepted before or after the subcommand):
   --yes            skip the confirmation prompt (ASSUME_YES=1)
   -h, --help       show this help and exit
 
+Any other option after the subcommand goes to the package manager, e.g.
+  $0 install --no-install-recommends nginx
+  $0 remove --purge nginx
+
 Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
 error.
 
@@ -59,27 +63,31 @@ done_ok() {
 main() {
   help_requested "$@" && { usage; exit 0; }
 
-  # Flags may sit anywhere; package names never start with '-'.
-  local -a args=()
+  # Our own flags may sit anywhere. Before the subcommand any other option is
+  # a usage error; after it, it belongs to the package manager (pm_opts).
+  # Package names never start with '-'.
+  local sub=""
+  local -a args=() pm_opts=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --dry-run) export DRY_RUN=1; shift ;;
       --yes)     export ASSUME_YES=1; shift ;;
       --) shift; args+=("$@"); break ;;
-      -*) usage_error "unknown option: $1" ;;
-      *) args+=("$1"); shift ;;
+      -*)
+        [[ -n "$sub" ]] || usage_error "unknown option: $1"
+        pm_opts+=("$1"); shift ;;
+      *)
+        if [[ -z "$sub" ]]; then sub="$1"; else args+=("$1"); fi
+        shift ;;
     esac
   done
 
-  [[ "${#args[@]}" -ge 1 ]] || usage_error "missing subcommand"
-  set -- "${args[@]}"
-
-  local sub="$1"
-  shift
+  [[ -n "$sub" ]] || usage_error "missing subcommand"
   case "$sub" in
     install|upgrade|remove|update|search) ;;
     *) usage_error "unknown subcommand: $sub" ;;
   esac
+  set -- "${args[@]}"
 
   local pm
   pm="$(detect_pm)"
@@ -90,35 +98,32 @@ main() {
       [[ $# -ge 1 ]] || usage_error "install requires at least one package name"
       require_root
       confirm_or_abort "Install with $pm: $*?"
-      run "$pm" install -y "$@"
+      run "$pm" install -y "${pm_opts[@]}" "$@"
       done_ok "install complete"
       ;;
     upgrade)
       [[ $# -eq 0 ]] || usage_error "upgrade takes no arguments"
       require_root
       confirm_or_abort "Upgrade all packages with $pm?"
-      case "$pm" in
-        apt-get) run "$pm" upgrade -y ;;
-        dnf|yum) run "$pm" upgrade -y ;;
-      esac
+      run "$pm" upgrade -y "${pm_opts[@]}"
       done_ok "upgrade complete"
       ;;
     remove)
       [[ $# -ge 1 ]] || usage_error "remove requires at least one package name"
       require_root
       confirm_or_abort "Remove with $pm: $*?"
-      run "$pm" remove -y "$@"
+      run "$pm" remove -y "${pm_opts[@]}" "$@"
       done_ok "remove complete"
       ;;
     update)
       [[ $# -eq 0 ]] || usage_error "update takes no arguments"
       case "$pm" in
-        apt-get) require_root; run "$pm" update ;;
+        apt-get) require_root; run "$pm" update "${pm_opts[@]}" ;;
         dnf|yum)
           # check-update exits 100 when updates are available; only other
           # non-zero codes are real failures.
           local rc=0
-          run "$pm" check-update || rc=$?
+          run "$pm" check-update "${pm_opts[@]}" || rc=$?
           [[ "$rc" -eq 0 || "$rc" -eq 100 ]] || die "$pm check-update failed (exit $rc)"
           ;;
       esac
@@ -130,8 +135,8 @@ main() {
       # still answers under DRY_RUN=1 (dnf/yum may refresh their metadata cache).
       # apt-get has no search command; apt-cache does.
       case "$pm" in
-        apt-get) need_cmd apt-cache; apt-cache search "$1" ;;
-        dnf|yum) "$pm" search "$1" ;;
+        apt-get) need_cmd apt-cache; apt-cache search "${pm_opts[@]}" "$1" ;;
+        dnf|yum) "$pm" search "${pm_opts[@]}" "$1" ;;
       esac
       ;;
   esac

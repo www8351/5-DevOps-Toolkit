@@ -197,7 +197,9 @@ WEB="$REPO_ROOT/05-docker-devops/docker-run-web.sh"
   run bash "$PKG" install -h
   [ "$status" -eq 0 ]
   [[ "$output" == *"pkg.sh"* ]]
-  run bash "$PKG" install --bogus
+  run bash "$PKG" --bogus install curl
+  [ "$status" -eq 2 ]
+  run bash "$PKG" install --purge
   [ "$status" -eq 2 ]
   run bash "$PKG" frobnicate
   [ "$status" -eq 2 ]
@@ -205,4 +207,15 @@ WEB="$REPO_ROOT/05-docker-devops/docker-run-web.sh"
   [ "$status" -eq 2 ]
   run bash "$PKG" --dry-run install curl <<< "n"
   [ "$status" -eq 1 ]
+}
+
+@test "pkg passes package-manager options after the subcommand through" {
+  stub apt-get
+  stub id 'echo 1000'
+  run bash "$PKG" install --no-install-recommends curl --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get install -y --no-install-recommends curl"* ]]
+  run bash "$PKG" remove curl --purge --dry-run --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] apt-get remove -y --purge curl"* ]]
 }
