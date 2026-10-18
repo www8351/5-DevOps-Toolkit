@@ -4,6 +4,49 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18: Phase 6, Python correctness and safety
+
+**Goal:** Make `ssh_toolkit` and `ec2-deploy.py` hold up to a security-minded reader.
+
+**What was done (each fix landed test first)**
+- `cli.py`: `--dry-run` now always beats `--apply` (it was ignored by `net`, so a "dry" run reconfigured
+  the NIC). `--apply` asks y/N; `--yes` finally has a job. Parser defaults for `--port`, `--netmask` and
+  `--remote-dir` used to shadow `SSHTK_*` env and `config.toml`; `--keyfile` ignored both. All now go
+  through `resolve()`. Global flags are accepted after the subcommand (SUPPRESS-default parent parser).
+- `network_manager.py`: inputs validated (`ipaddress`, contiguous dotted mask, a safe interface-name
+  pattern) before anything runs, dry run included; PowerShell arguments quoted; timeouts everywhere;
+  two dead "capture for rollback" calls removed.
+- `ssh_orchestrator.py`: the paramiko `copy_id` fallback no longer interpolates the key into
+  `echo "..."`; the key goes on stdin to a single `umask 077 && mkdir && chmod && cat >>` command.
+- `payload_executor.py`: a quoted `~` was never expanded, so the demo created a directory named `~`.
+  Paths now map `~` to `"$HOME"`; SFTP paths drop `~/`. Native ssh/scp gained `BatchMode=yes` and
+  keepalives; every subprocess call has a timeout.
+- `utils.py`: `ssh_client()` (known_hosts first, D18), `remote_exec()` (stdin, reads before exit status),
+  `confirm()` returns False on EOF.
+- `ec2-deploy.py`: y/N before a billed launch, `DRY_RUN`/`ASSUME_YES`, lazy boto3, region and credential
+  errors explained, exit 1 when a wait fails, `requirements.txt` with boto3 (D19).
+- ruff widened to `E9,F` in all three runners (D20). pytest gained `05-docker-devops/tests`.
+
+**What was tried / found**
+- Plan numbering shifted: the ruff widening took D20, so the release decision in Phase 8 becomes D21.
+- A loopback OpenSSH 9.6 server was installed in the build container (not committed) to exercise the
+  paramiko and native paths for real. It found nothing new in the code; the first SFTP attempt failed
+  only because the ad-hoc `sshd_config` lacked a `Subsystem sftp` line.
+- Native `scp` to a remote directory that does not exist still fails (scp never creates parents); the
+  paramiko path creates them. That matches each tool's own semantics and was left as is.
+- While checking `ec2-deploy.py` error paths, one run with `--region us-east-1 --yes` reached AWS using
+  credentials present in the build container's environment. AWS answered `AuthFailure`; nothing was
+  launched. Later runs used a clean environment.
+
+**Verification**
+- `make all`: shellcheck, `bash -n`, ruff `E9,F`, 42 bats, 103 pytest, all clean.
+- Loopback sshd: paramiko `copy_id` with a key comment `evil"; touch /tmp/pwned; echo "` appended the key,
+  ran nothing, and was a no-op the second time; `~/.ssh` 700, `authorized_keys` 600; SFTP to
+  `~/sub/dir/`; `run_demo` into `~/demo_ssh` and `~/demo two`; native `connect`, `demo` and `transfer`
+  through the CLI with `SSHTK_PORT=2222` from env; a wrong known_hosts key raised `BadHostKeyException`.
+- `ec2-deploy.py` with real boto3: missing region, missing credentials and a declined prompt each print a
+  one-line reason and exit 1.
+
 ## 2026-10-18: Phase 5, first-impression shell fixes (portfolio polish wave)
 
 **Goal:** Nothing a reviewer runs in the first five minutes should be broken. Fix before showcasing:

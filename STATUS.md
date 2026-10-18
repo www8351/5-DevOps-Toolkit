@@ -5,9 +5,9 @@ _Last updated: 2026-10-18_
 ## Where the project stands
 **2026-10-18: portfolio polish wave in progress (Phases 5 to 9).** The plan fixes what a reviewer
 would hit in the first five minutes, then hardens the Python, widens the tests, adds release
-hygiene and polishes the docs. **Phase 5 (first-impression shell fixes) is done** on branch
-`ccr-dec6d5a6-417b42`: 42 bats + 29 pytest = 71 tests, `make all` clean as root and as a
-non-root user. The README still states the old counts (53 tests); Phase 9 recounts them.
+hygiene and polishes the docs. **Phases 5 (shell fixes) and 6 (Python correctness and safety)
+are done** on branch `ccr-dec6d5a6-417b42`: 42 bats + 103 pytest = 145 tests, `make all` clean.
+The README still states the old counts (53 tests); Phase 9 recounts them.
 
 **v1 complete + hardened.** A 5-module DevOps shell toolkit is built, tested and pushed to GitHub as a
 public repo. Now **CI-gated** (shellcheck + bats + pytest + Makefile-parse + ruff — all 5 jobs green),
@@ -77,15 +77,26 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 - [x] `setup.sh`/`setup.ps1` run from any directory (PYTHONPATH, not cd).
 - [x] New bats files: `system_monitor.bats`, `docker_devops.bats`, `user_permissions.bats`; `stub()` helper in `helper.bash`.
 
+## Done (added 2026-10-18), Phase 6: Python correctness and safety
+- [x] `cli.py`: `--dry-run` always beats `--apply`; `--apply` asks y/N (`--yes` skips); global flags accepted after the subcommand.
+- [x] `cli.py`: port, keyfile, netmask and remote dir follow flag > env > config > default (port/netmask defaults no longer mask env/config).
+- [x] `network_manager.py`: interface name, IPs and netmask validated before anything runs; PowerShell args quoted; every command has a timeout.
+- [x] `ssh_orchestrator.py`: paramiko `copy_id` sends the key on stdin to one quoted command (no injection, no race); refuses non-POSIX remotes.
+- [x] `payload_executor.py`: `~` expands remotely instead of creating a `~` directory; `BatchMode=yes` + keepalives; timeouts.
+- [x] paramiko clients load known_hosts first (D18). `confirm()` treats a closed stdin as no.
+- [x] `ec2-deploy.py`: y/N before a real launch, `DRY_RUN`/`ASSUME_YES`, lazy boto3, clear region/credential errors, exit 1 on failed waits (D19).
+- [x] ruff gate widened to `E9,F` across CI, Makefile, `tasks.ps1` (D20); pytest now also runs `05-docker-devops/tests`.
+- [x] New pytest files: `test_cli.py`, `test_network_manager.py`, `test_remote.py`, `05-docker-devops/tests/test_ec2_deploy.py`.
+- [x] Verified end to end against a loopback OpenSSH server in the build container (see PROGRESS 2026-10-18).
+
 ## Open / not done (user steps — need a human + real hardware)
 - [ ] Record `docs/demo.cast` / `demo.gif` from a live terminal and embed the GIF in the README.
 - [ ] `ssh_toolkit` live-VM smoke test (needs a real two-VM lab).
 - [x] Repo-name mismatch resolved — canonical name is `5-DevOps-Toolkit` (the remote); all docs aligned (D16).
 
 ## Next best action
-1. Phase 6: Python correctness and safety (`ssh_toolkit` CLI precedence, `--dry-run` gating `net`,
-   remote injection, timeouts, host keys, `ec2-deploy.py` safety contract, pure pytest, ruff `F`).
-2. Then Phases 7 to 9 per the approved plan (behaviour tests, repo hygiene and release, docs).
+1. Phase 7: behaviour tests for the remaining read-only shell tools, `httpcheck.sh` exit code.
+2. Then Phases 8 and 9 per the approved plan (repo hygiene and release, docs).
 3. Human steps after the merge: record the demo GIF (only now that banners render correctly),
    push the `v1.0.0` tag, run `ssh_toolkit` against a real two-VM lab.
 
@@ -93,6 +104,11 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 None.
 
 ## Needs review
+`net --apply` backends (netplan, nmcli, ifupdown, macOS, Windows) were changed only by adding input
+checks, quoting and timeouts, and were not run: that needs a VM whose NIC can be lost safely. The macOS
+`networksetup -setmanual` call still lacks the router argument, and the macOS/Windows rollback reverts to
+DHCP rather than the previous static config. Both are known, untested-on-hardware gaps.
+
 `04-network-ssh/setup.ps1` gained a PYTHONPATH line (Phase 5) but was not run: PowerShell is not
 available in the build environment. Run `.\setup.ps1 --help` from the repo root on Windows once.
 

@@ -188,3 +188,40 @@ worse: `sudo` resets the environment, so the "preview" ran for real.
 variable order is an easy, dangerous mistake); dropping the root check from the tools (D2 is final).
 **Status:** Final.
 
+---
+
+### D18: paramiko loads known_hosts before trusting a new host
+**Decision:** Every paramiko client comes from `utils.ssh_client()`, which calls `load_system_host_keys()`
+before `AutoAddPolicy`. A host already in `~/.ssh/known_hosts` must present the same key, or the connection
+fails with `BadHostKeyException`. An unknown host is accepted for that session.
+**Why:** The fallback used `AutoAddPolicy` with an empty key store, so it accepted any key, including a
+changed one: a silent man-in-the-middle hole, and the opposite of what the native tools do. Loading
+known_hosts gives the same semantics as OpenSSH `StrictHostKeyChecking=accept-new`, which the native path
+already uses (D10).
+**Rejected:** `RejectPolicy` (the first password-based `copy_id` to a fresh VM could never succeed, and
+that is the fallback's whole job); keeping `AutoAddPolicy` alone (accepts a changed key).
+**Status:** Final.
+
+---
+
+### D19: `ec2-deploy.py` follows the same safety contract as the shell tools
+**Decision:** A real launch asks y/N first; `--yes` or `ASSUME_YES=1` skips it, a closed stdin means no.
+`DRY_RUN=1` maps to `--dry-run` (AWS-side validation, nothing launched). boto3 is imported lazily so `-h`
+works without it, and it is listed in `05-docker-devops/requirements.txt`.
+**Why:** It was the only tool that can cost money and the only one with no guard, which contradicts D2 for
+the one Python tool. The env toggles keep one mental model across all 25 tools.
+**Rejected:** A hard cap on `--count` (the prompt already shows the count; a cap is an arbitrary policy);
+mocking boto3 to test `launch()` end to end (D12).
+**Status:** Final.
+
+---
+
+### D20: ruff gate widened from real-error rules to `E9,F`
+**Decision:** CI, the Makefile and `tasks.ps1` run `ruff check --select E9,F` over the Python code and its
+tests. Style rules (E/W/I/UP and friends) stay off.
+**Why:** D11 promised to tighten once a baseline was clean. The full pyflakes family was 5 findings away
+(unused imports and variables), and those findings were real dead code. Pyflakes rules have no style
+opinions, so the gate stays a correctness signal.
+**Rejected:** A broad ruleset now (142 findings, mostly line length and typing style: noise for this repo).
+**Status:** Final; the next step, if ever, is a ruff config file with an explicit ruleset.
+
