@@ -105,16 +105,33 @@ esac'
   [[ "$output" != *"stub:ssh-keygen"* ]]
 }
 
-@test "sshkey removes the old key after a yes, so ssh-keygen never asks again" {
+# A stub ssh-keygen that writes "new" into the path after -f and its .pub, and
+# refuses when that path exists (as the real one would stop at its own prompt).
+FAKE_KEYGEN='while [ $# -gt 0 ]; do [ "$1" = -f ] && f="$2"; shift; done
+[ -e "$f" ] && exit 1
+echo new >"$f"; echo new.pub >"$f.pub"'
+
+@test "sshkey replaces an existing key after a yes, without a second prompt" {
   export HOME="$BATS_TEST_TMPDIR/home"
   mkdir -p "$HOME/.ssh"
-  touch "$HOME/.ssh/k" "$HOME/.ssh/k.pub"
-  # ssh-keygen refuses (exits 1) if the file still exists, like it would hang
-  # on its own "Overwrite (y/n)?" prompt in a non-interactive run.
-  stub ssh-keygen 'for a; do f="$a"; done; if [ -e "$HOME/.ssh/k" ]; then exit 1; fi; echo "stub:ssh-keygen $*"'
+  echo old >"$HOME/.ssh/k"; echo old.pub >"$HOME/.ssh/k.pub"
+  stub ssh-keygen "$FAKE_KEYGEN"
   run bash "$REPO_ROOT/04-network-ssh/sshkey.sh" --file "$HOME/.ssh/k" --yes
   [ "$status" -eq 0 ]
-  [[ "$output" == *"stub:ssh-keygen -t ed25519 -f $HOME/.ssh/k"* ]]
+  [ "$(cat "$HOME/.ssh/k")" = "new" ]
+  [ "$(cat "$HOME/.ssh/k.pub")" = "new.pub" ]
+  [ -z "$(find "$HOME/.ssh" -name '*.new.*')" ]
+}
+
+@test "sshkey keeps the old key when generating the new one fails" {
+  export HOME="$BATS_TEST_TMPDIR/home"
+  mkdir -p "$HOME/.ssh"
+  echo old >"$HOME/.ssh/k"; echo old.pub >"$HOME/.ssh/k.pub"
+  stub ssh-keygen 'exit 1'
+  run bash "$REPO_ROOT/04-network-ssh/sshkey.sh" --file "$HOME/.ssh/k" --yes
+  [ "$status" -ne 0 ]
+  [ "$(cat "$HOME/.ssh/k")" = "old" ]
+  [ "$(cat "$HOME/.ssh/k.pub")" = "old.pub" ]
 }
 
 @test "name_echo repeats the name N times and validates N" {

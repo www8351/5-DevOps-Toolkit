@@ -21,7 +21,8 @@ Options:
   -C, --comment TEXT   key comment (default: user@host)
   --copy-to USER@HOST  copy the public key to USER@HOST afterwards (ssh-copy-id)
   --dry-run            print the commands instead of running them (DRY_RUN=1)
-  --yes                skip the prompts (ASSUME_YES=1)
+  --yes                skip the prompts (ASSUME_YES=1), including the one before
+                       replacing an existing key
   -h, --help           show this help and exit
 
 Deprecated (still works, removed in 2.0.0): -c USER@HOST (use --copy-to).
@@ -68,9 +69,6 @@ main() {
   if [[ -e "$keyfile" ]]; then
     c_warn "key already exists: $keyfile"
     confirm_or_abort "Overwrite existing key $keyfile?"
-    # Remove the old pair now, so ssh-keygen does not stop at its own
-    # "Overwrite (y/n)?" prompt, which would hang an unattended --yes run.
-    run rm -f -- "$keyfile" "${keyfile}.pub"
   fi
 
   # Ensure the parent directory exists with sane permissions.
@@ -81,7 +79,17 @@ main() {
     run chmod 700 "$keydir"
   fi
 
-  run ssh-keygen -t ed25519 -f "$keyfile" -C "$comment"
+  if [[ -e "$keyfile" ]]; then
+    # Generate beside the old pair and swap it in only once ssh-keygen has
+    # succeeded: the old key survives a failure, and ssh-keygen never stops
+    # at its own "Overwrite (y/n)?" prompt, which would hang a --yes run.
+    local tmpkey="${keyfile}.new.$$"
+    run ssh-keygen -t ed25519 -f "$tmpkey" -C "$comment"
+    run mv -f -- "$tmpkey" "$keyfile"
+    run mv -f -- "${tmpkey}.pub" "${keyfile}.pub"
+  else
+    run ssh-keygen -t ed25519 -f "$keyfile" -C "$comment"
+  fi
   [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "keypair generated: ${keyfile} (+ ${keyfile}.pub)"
 
   if [[ -n "$copy_target" ]]; then
