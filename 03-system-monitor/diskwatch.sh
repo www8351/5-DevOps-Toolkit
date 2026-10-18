@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # diskwatch.sh — flag mounted filesystems above a usage threshold
-#   commands showcased: df, awk, tr, tail
+#   commands showcased: df, tail, read
 #
 # Usage: ./diskwatch.sh [-t PERCENT]
 #

@@ -9,7 +9,7 @@ One-glance dashboards for host, CPU, memory, disk and swap — small, focused Ba
 | --- | --- | --- | --- |
 | `sysinfo.sh` | Boxed dashboard of host, kernel, CPU, memory and disk | `uname`, `hostnamectl`, `lscpu`, `df`, `free`, `uptime` | No |
 | `topproc.sh` | Top-N processes by CPU or memory | `ps`, `sort`, `head` | No |
-| `diskwatch.sh` | Flag mounted filesystems above a usage threshold (cron-friendly exit code) | `df`, `awk`, `tr`, `tail` | No |
+| `diskwatch.sh` | Flag mounted filesystems above a usage threshold (cron-friendly exit code) | `df`, `tail`, `read` | No |
 | `memwatch.sh` | RAM and swap usage report with percentages | `free`, `swapon`, `awk`, `/proc/meminfo` | No |
 | `mkswap.sh` | Create and enable a swapfile, optionally persisting in `/etc/fstab` | `fallocate`, `dd`, `chmod`, `mkswap`, `swapon`, `/etc/fstab` | **Yes** |
 
