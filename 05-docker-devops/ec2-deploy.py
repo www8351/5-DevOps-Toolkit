@@ -8,10 +8,18 @@ instances from command-line arguments, then report their instance IDs and
 public IPs. Supports a real AWS dry-run so you can validate permissions and
 parameters without actually launching anything.
 
+Safety contract (same as the shell tools)
+-----------------------------------------
+  * A real launch costs money, so it asks y/N first. --yes or ASSUME_YES=1
+    skips the prompt; a closed stdin counts as "no".
+  * DRY_RUN=1 behaves like --dry-run: AWS validates the request and nothing
+    is launched.
+  * -h works without boto3 installed.
+
 Prerequisites
 -------------
   * Python 3.8+
-  * boto3 installed:            pip install boto3
+  * boto3 installed:            pip install -r requirements.txt
   * AWS credentials configured: aws configure   (or env vars / instance role)
   * IAM permissions:            ec2:RunInstances, ec2:CreateTags,
                                 ec2:DescribeInstances
@@ -26,18 +34,9 @@ Example
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from typing import List, Optional
-
-try:
-    import boto3
-    from botocore.exceptions import BotoCoreError, ClientError
-except ImportError:
-    sys.stderr.write(
-        "error: boto3 is not installed.\n"
-        "       install it with:  pip install boto3\n"
-    )
-    sys.exit(1)
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -81,14 +80,42 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="ask AWS to validate the request without launching anything",
+        help="ask AWS to validate the request without launching anything "
+             "(also: DRY_RUN=1)",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="skip the confirmation before a real launch (also: ASSUME_YES=1)",
     )
     args = parser.parse_args(argv)
 
     if args.count < 1:
         parser.error("--count must be a positive integer")
 
+    # The same environment toggles as the shell tools (lib/common.sh).
+    if os.environ.get("DRY_RUN") == "1":
+        args.dry_run = True
+    if os.environ.get("ASSUME_YES") == "1":
+        args.yes = True
+
     return args
+
+
+def confirm_launch(args: argparse.Namespace) -> bool:
+    """Ask before a real launch, because it starts billing. Dry runs never ask."""
+    if args.dry_run or args.yes:
+        return True
+    where = f" in {args.region}" if args.region else ""
+    try:
+        reply = input(
+            f"Launch {args.count} x {args.instance_type} from {args.image_id}{where}? "
+            "This starts billing. [y/N] "
+        )
+    except EOFError:  # no terminal (cron, CI, a pipe): never assume yes
+        print()
+        return False
+    return reply.strip().lower() in ("y", "yes")
 
 
 def build_tag_spec(name_tag: Optional[str]) -> List[dict]:
@@ -105,7 +132,21 @@ def build_tag_spec(name_tag: Optional[str]) -> List[dict]:
 
 def launch(args: argparse.Namespace) -> int:
     """Launch the instances and report results. Returns a process exit code."""
-    ec2 = boto3.resource("ec2", region_name=args.region)
+    # Imported here, not at the top, so -h and the tests work without boto3.
+    try:
+        import boto3
+        from botocore.exceptions import (
+            BotoCoreError,
+            ClientError,
+            NoCredentialsError,
+            NoRegionError,
+        )
+    except ImportError:
+        sys.stderr.write(
+            "error: boto3 is not installed.\n"
+            "       install it with:  pip install -r 05-docker-devops/requirements.txt\n"
+        )
+        return 1
 
     run_kwargs: dict = {
         "ImageId": args.image_id,
@@ -122,6 +163,7 @@ def launch(args: argparse.Namespace) -> int:
         run_kwargs["TagSpecifications"] = tag_spec
 
     try:
+        ec2 = boto3.resource("ec2", region_name=args.region)
         instances = ec2.create_instances(**run_kwargs)
     except ClientError as exc:
         code = exc.response.get("Error", {}).get("Code", "")
@@ -138,6 +180,12 @@ def launch(args: argparse.Namespace) -> int:
             return 1
         sys.stderr.write(f"error: AWS rejected the request: {exc}\n")
         return 1
+    except NoRegionError:
+        sys.stderr.write("error: no AWS region set: pass --region or set AWS_DEFAULT_REGION\n")
+        return 1
+    except NoCredentialsError:
+        sys.stderr.write("error: no AWS credentials found: run `aws configure` or set AWS_PROFILE\n")
+        return 1
     except BotoCoreError as exc:
         sys.stderr.write(f"error: could not reach AWS: {exc}\n")
         return 1
@@ -146,6 +194,7 @@ def launch(args: argparse.Namespace) -> int:
     print(f"launched {len(ids)} instance(s): {', '.join(ids)}")
     print("waiting for instances to enter the 'running' state...")
 
+    failed = False
     for inst in instances:
         try:
             inst.wait_until_running()
@@ -154,15 +203,19 @@ def launch(args: argparse.Namespace) -> int:
             print(f"  {inst.id}  state={inst.state['Name']}  public-ip={public_ip}")
         except (ClientError, BotoCoreError) as exc:
             sys.stderr.write(f"  {inst.id}: could not fetch status: {exc}\n")
+            failed = True
 
-    return 0
+    return 1 if failed else 0
 
 
-def main() -> None:
-    """Entry point."""
-    args = parse_args()
-    sys.exit(launch(args))
+def main(argv: Optional[List[str]] = None) -> int:
+    """Entry point. Returns the process exit code."""
+    args = parse_args(argv)
+    if not confirm_launch(args):
+        sys.stderr.write("aborted: nothing was launched\n")
+        return 1
+    return launch(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
