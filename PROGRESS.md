@@ -84,7 +84,18 @@ recording the demo or cutting a release first would have shown broken output.
 - Manual: `DRY_RUN=1 mkswap.sh -s 1G -f /tmp/demo.swap` as `nobody` previews and exits 0;
   `pkg.sh search curl` works; `sysinfo.sh` exits 0 in a systemd-less container; `setup.sh --help` works
   from the repo root and from `/tmp`.
-- Not verified: `setup.ps1` (no PowerShell in this environment).
+- Not verified at first: `setup.ps1` (no PowerShell in this environment). See the review follow-up below.
+
+**Review follow-up (same day, before the first push)**
+- An adversarial review of the Phase 5 diff found one bug and several risks, all fixed with tests:
+  `pkg.sh` still printed "install complete" etc. under `DRY_RUN=1`; dnf/yum `check-update || true` hid
+  real failures; `mkswap.sh` made 1.5 MiB or 2 MiB for `-s 1536K` depending on the path, could overflow
+  on a huge G value, and as root would follow a dangling symlink at `-f`; `setup.ps1` leaked PYTHONPATH
+  into the caller's session; `newuser`/`grant-sudo` help still said "Must run as root".
+- Not changed: banner width under a C locale with a non-ASCII title (no such title remains after the demo
+  title went ASCII).
+- A portable PowerShell 7.4 was downloaded into the scratch area: `setup.ps1 --help` works from `/tmp`
+  and restores PYTHONPATH; `tasks.ps1 all` passes. Windows PowerShell 5.1 itself remains untested.
 
 ## 2026-08-25 — README accuracy audit (tool count corrected)
 

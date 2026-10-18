@@ -6,7 +6,7 @@ _Last updated: 2026-10-18_
 **2026-10-18: portfolio polish wave in progress (Phases 5 to 9).** The plan fixes what a reviewer
 would hit in the first five minutes, then hardens the Python, widens the tests, adds release
 hygiene and polishes the docs. **Phases 5 (shell fixes) and 6 (Python correctness and safety)
-are done** on branch `ccr-dec6d5a6-417b42`: 42 bats + 103 pytest = 145 tests, `make all` clean.
+are done** on branch `ccr-dec6d5a6-417b42`: 48 bats + 103 pytest = 151 tests, `make all` clean.
 The README still states the old counts (53 tests); Phase 9 recounts them.
 
 **v1 complete + hardened.** A 5-module DevOps shell toolkit is built, tested and pushed to GitHub as a
@@ -67,13 +67,14 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 
 ## Done (added 2026-10-18), Phase 5: first-impression shell fixes
 - [x] `hr`/`banner` drew broken UTF-8 (byte-wise `tr`); now built with parameter expansion. Tests match exact characters.
-- [x] All 28 `.sh` entry points and `ec2-deploy.py` tracked as `100755`; bats test guards it; README quick start lost its `chmod` step.
+- [x] All 27 `.sh` entry points and `ec2-deploy.py` tracked as `100755` (`lib/common.sh` stays `100644`, it is sourced); bats test guards it; README quick start lost its `chmod` step.
 - [x] `require_root` lets a non-root user preview under `DRY_RUN=1` (D17). README quick start step 4 now works as a normal user.
 - [x] `mkswap.sh`: help example fixed to `sudo DRY_RUN=1` (the old order ran for real); SIZE needs a unit; absolute path required.
 - [x] `pkg.sh search` uses `apt-cache` (was `apt-get search`, exit 100); `pkg.sh update` needs root on apt.
 - [x] `sysinfo.sh` survives a `hostnamectl` that cannot run (containers, WSL); `lscpu`/`free` parsed with `LC_ALL=C`.
 - [x] `pingsweep.sh -h` works without `ping`; `audit-perms.sh --help` exits 0; smoke test covers `-h` and `--help`.
-- [x] `install-jenkins.sh` writes its apt source through `run`; root tools stop claiming success under `DRY_RUN=1`.
+- [x] `install-jenkins.sh` writes its apt source through `run`; root tools and `pkg.sh` stop claiming success under `DRY_RUN=1`.
+- [x] Review fixes: `mkswap.sh` sizes exact on both paths, symlinks and sub-1M sizes refused; dnf/yum `check-update` failures surface.
 - [x] `setup.sh`/`setup.ps1` run from any directory (PYTHONPATH, not cd).
 - [x] New bats files: `system_monitor.bats`, `docker_devops.bats`, `user_permissions.bats`; `stub()` helper in `helper.bash`.
 
@@ -109,8 +110,8 @@ checks, quoting and timeouts, and were not run: that needs a VM whose NIC can be
 `networksetup -setmanual` call still lacks the router argument, and the macOS/Windows rollback reverts to
 DHCP rather than the previous static config. Both are known, untested-on-hardware gaps.
 
-`04-network-ssh/setup.ps1` gained a PYTHONPATH line (Phase 5) but was not run: PowerShell is not
-available in the build environment. Run `.\setup.ps1 --help` from the repo root on Windows once.
+`04-network-ssh/setup.ps1` and `tasks.ps1` were verified with PowerShell 7.4 on Linux, not with Windows
+PowerShell 5.1. Run `.\setup.ps1 --help` and `.\tasks.ps1 all` once on the Windows box.
 
 Destructive/root scripts (`newuser.sh`, `mkswap.sh`, `pkg.sh`, `install-jenkins.sh`, `grant-sudo.sh`) were
 verified via `-h` and `DRY_RUN` only — they were **not** executed against a live system. Run them in a
