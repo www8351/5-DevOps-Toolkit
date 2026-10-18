@@ -34,3 +34,19 @@ load helper
     return 1
   fi
 }
+
+@test "every entry point is executable after a fresh clone" {
+  # lib/common.sh is sourced, never executed, so it is not listed here.
+  local failures=()
+  local script
+  while IFS= read -r script; do
+    [ -x "$script" ] || failures+=("${script#"$REPO_ROOT"/}")
+  done < <(find "$REPO_ROOT" \( -name '*.sh' -o -name 'ec2-deploy.py' \) \
+             -not -path '*/lib/*' -not -path '*/.git/*' -not -path '*/.venv/*' | sort)
+
+  if [ "${#failures[@]}" -ne 0 ]; then
+    printf 'not executable (fix with: git update-index --chmod=+x FILE):\n'
+    printf '  - %s\n' "${failures[@]}"
+    return 1
+  fi
+}

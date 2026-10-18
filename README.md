@@ -117,19 +117,16 @@ library, 25 consumers **DRY by design**, not copy-paste.
 git clone https://github.com/www8351/5-DevOps-Toolkit.git
 cd 5-DevOps-Toolkit
 
-# 2. make the scripts executable (Linux / WSL / macOS)
-chmod +x lib/common.sh **/*.sh
-
-# 3. every script self-documents
+# 2. every script self-documents (scripts ship executable, no chmod needed)
 ./01-file-text-toolkit/dirsnap.sh --help
 
-# 4. run something harmless
+# 3. run something harmless
 ./01-file-text-toolkit/dirsnap.sh -n 5 .
 ./03-system-monitor/sysinfo.sh
 ./04-network-ssh/httpcheck.sh https://github.com https://example.com
 
-# 5. preview a destructive tool WITHOUT touching the system
-DRY_RUN=1 ./03-system-monitor/mkswap.sh -s 1G -f /swapfile
+# 4. preview a root tool as a normal user, WITHOUT touching the system
+DRY_RUN=1 ./03-system-monitor/mkswap.sh -s 1G -f /tmp/demo.swap
 ```
 
 > 🪟 **Windows users:** the commands target **Linux**. Run the read-only scripts in **Git Bash**, and the
