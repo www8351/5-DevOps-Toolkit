@@ -173,3 +173,18 @@ place).
 **Note:** Historical `PROGRESS.md` entries that record the original `devops-toolkit-5` intent are left intact
 — they document *why* the mismatch existed.
 **Status:** Final. If the owner prefers `devops-toolkit-5`, rename the GitHub repo instead and re-align.
+
+---
+
+### D17: Root tools allow a non-root preview under `DRY_RUN=1`
+**Decision:** `require_root` returns success for a normal user when `DRY_RUN=1`, after a warning that
+this is a preview only. Without `DRY_RUN=1` it still refuses. This only holds because every side effect
+in the root tools goes through `run`; any new root tool must keep that rule (D2), and the remaining
+hand-rolled write in `install-jenkins.sh` was moved onto `run` for that reason.
+**Why:** The README quick start previewed `mkswap.sh` as a normal user and died with "needs root", so the
+headline safety feature failed on first contact. The documented workaround, `DRY_RUN=1 sudo ...`, was
+worse: `sudo` resets the environment, so the "preview" ran for real.
+**Rejected:** Telling users to run `sudo DRY_RUN=1` only (needs root just to read a plan, and the wrong
+variable order is an easy, dangerous mistake); dropping the root check from the tools (D2 is final).
+**Status:** Final.
+

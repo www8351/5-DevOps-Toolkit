@@ -4,6 +4,45 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18: Phase 5, first-impression shell fixes (portfolio polish wave)
+
+**Goal:** Nothing a reviewer runs in the first five minutes should be broken. Fix before showcasing:
+recording the demo or cutting a release first would have shown broken output.
+
+**How the work was found**
+- A read-only audit of every script and Python module, then each finding reproduced before fixing.
+- `make all` on a fresh Ubuntu 24.04 container failed before any change: `pingsweep.sh -h` exits 1
+  without `ping`, and the `require_root` test assumed a non-root runner.
+
+**What was done (each fix landed test first)**
+- `lib/common.sh`: `hr`/`banner` used `tr ' ' '─'`, which swaps bytes, so every rule printed lone 0xE2
+  bytes. Rebuilt with parameter expansion. `require_root` now allows a `DRY_RUN=1` preview (D17).
+- Tracked every entry point as executable; new bats test; README quick start no longer needs `chmod`.
+- `mkswap.sh`: the help example `DRY_RUN=1 sudo ...` ran for real (sudo drops the variable); a size with
+  no unit meant bytes on one path and MiB on the other; relative paths reached `/etc/fstab`. All closed.
+- `pkg.sh search` used the nonexistent `apt-get search`; `pkg.sh update` had no root check.
+- `sysinfo.sh` died when `hostnamectl` exists but systemd does not. `lscpu`/`free` parsed under `LC_ALL=C`.
+- `pingsweep.sh` and `audit-perms.sh` help fixes; the smoke test now runs `-h` and `--help`.
+- `install-jenkins.sh` apt source write moved onto `run`; root tools stop saying "created"/"finished"
+  during a dry run.
+- `setup.sh`/`setup.ps1` failed with "No module named ssh_toolkit" outside `04-network-ssh`.
+
+**What was tried / found**
+- The plan said "cd into the script directory" for the setup scripts. PYTHONPATH was used instead: a cd
+  would change what relative CLI paths point to. Config lookup is already package-relative.
+- `mkswap.sh` first accepted leading zeros in SIZE; bash reads `010` as octal (8), so the regex now
+  forbids them.
+- New bats files stub external tools on PATH with a small `stub()` helper, which keeps every test
+  host-safe (no account, swap or package change) and keeps D12's child-shell rule.
+
+**Verification**
+- `make all` clean: shellcheck, `bash -n` (28 scripts), ruff, 42 bats, 29 pytest. The bats suite also
+  passes as `nobody`, matching the non-root CI runner.
+- Manual: `DRY_RUN=1 mkswap.sh -s 1G -f /tmp/demo.swap` as `nobody` previews and exits 0;
+  `pkg.sh search curl` works; `sysinfo.sh` exits 0 in a systemd-less container; `setup.sh --help` works
+  from the repo root and from `/tmp`.
+- Not verified: `setup.ps1` (no PowerShell in this environment).
+
 ## 2026-08-25 — README accuracy audit (tool count corrected)
 
 **What was done**
