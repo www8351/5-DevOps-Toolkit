@@ -15,6 +15,8 @@ def _clean_env(monkeypatch):
     """Keep the developer's own SSHTK_* variables out of every test."""
     for key in ("HOST", "USER", "PORT", "KEYFILE", "NETMASK", "REMOTE_DIR"):
         monkeypatch.delenv(f"SSHTK_{key}", raising=False)
+    for var in ("DRY_RUN", "ASSUME_YES"):
+        monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture
@@ -139,3 +141,24 @@ def test_yes_flag_skips_the_apply_prompt(net_calls, monkeypatch):
     monkeypatch.setattr("builtins.input", no_prompt)
     cli.cmd_net(parse("--yes", "net", *NET_ARGS, "--apply"), {})
     assert net_calls[0]["apply"] is True
+
+
+# ── shared environment toggles (D22): same names as the shell tools ──────────
+@pytest.mark.parametrize("var,attr", [("DRY_RUN", "dry_run"), ("ASSUME_YES", "yes")])
+def test_env_toggle_sets_the_flag(monkeypatch, var, attr):
+    monkeypatch.setenv(var, "1")
+    args = cli._apply_env_toggles(parse("connect"))
+    assert getattr(args, attr) is True
+
+
+@pytest.mark.parametrize("value", ["0", "", "yes"])
+def test_env_toggle_only_reacts_to_1(monkeypatch, value):
+    monkeypatch.setenv("DRY_RUN", value)
+    assert cli._apply_env_toggles(parse("connect")).dry_run is False
+
+
+def test_dry_run_env_blocks_apply(net_calls, monkeypatch):
+    monkeypatch.setenv("DRY_RUN", "1")
+    args = cli._apply_env_toggles(parse("net", *NET_ARGS, "--apply"))
+    cli.cmd_net(args, {})
+    assert net_calls[0]["apply"] is False

@@ -150,6 +150,6 @@ sudo python -m ssh_toolkit net --interface enp0s8 --address 193.168.1.2 --gatewa
 ## Notes
 
 - Every `.sh` script supports `-h` / `--help`.
-- `.sh` scripts honour `DRY_RUN=1` and `ASSUME_YES=1`.
+- `.sh` scripts and `ssh_toolkit` honour `DRY_RUN=1` and `ASSUME_YES=1` (the flag forms are `--dry-run` and `--yes`).
 - All `.sh` scripts source the shared `lib/common.sh` helper library.
 - `ssh_toolkit` uses `--dry-run` / `--yes` flags and has a `--verbose` mode.
