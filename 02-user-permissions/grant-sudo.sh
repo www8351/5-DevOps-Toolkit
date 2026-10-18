@@ -70,7 +70,7 @@ main() {
   confirm "Add user '$user' to group '$admin_group'?" || die "aborted by user"
 
   run usermod -aG "$admin_group" "$user"
-  c_ok "added '$user' to '$admin_group'"
+  [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "added '$user' to '$admin_group'"
 
   hr
   if [[ "${DRY_RUN:-0}" != "1" ]]; then

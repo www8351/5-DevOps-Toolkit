@@ -70,7 +70,7 @@ main() {
   confirm "Create user '$user' now?" || die "aborted by user"
 
   run useradd -m -d "$home" -s "$shell" "$group_flag" "$user"
-  c_ok "user '$user' created"
+  [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "user '$user' created"
 
   # Set a password when running interactively; otherwise advise.
   if command -v passwd >/dev/null 2>&1; then
