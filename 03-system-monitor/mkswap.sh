@@ -21,8 +21,8 @@ it as swap, and enables it. With --persist it also adds an /etc/fstab entry
 so the swapfile survives reboots.
 
 Options:
-  -s SIZE        swapfile size, e.g. 512M, 2G (required)
-  -f FILE        swapfile path (default: /swapfile)
+  -s SIZE        swapfile size with a K, M or G unit, e.g. 512M, 2G (required)
+  -f FILE        absolute swapfile path (default: /swapfile)
   --persist      append an /etc/fstab entry so swap is enabled on boot
   -h, --help     show this help and exit
 
@@ -33,7 +33,11 @@ Honoured environment toggles:
 Examples:
   sudo $0 -s 2G
   sudo $0 -s 1G -f /var/swapfile --persist
-  DRY_RUN=1 sudo $0 -s 4G --persist
+  sudo DRY_RUN=1 $0 -s 4G --persist
+
+Put DRY_RUN=1 after sudo: sudo resets the environment, so a variable set
+before it never reaches the script. A normal user can also preview with
+DRY_RUN=1 and no sudo at all.
 EOF
 }
 
@@ -55,9 +59,12 @@ main() {
   done
 
   [[ -n "$size" ]] || die "missing required option -s SIZE (try -h)"
-  # Accept sizes like 512M, 2G, 1048576 (bytes) — a digit run with optional unit.
-  [[ "$size" =~ ^[0-9]+([KkMmGg])?$ ]] \
-    || die "invalid SIZE '$size' (examples: 512M, 2G)"
+  # The unit is mandatory: fallocate would read a bare number as bytes while
+  # the dd fallback reads it as MiB, so 1048576 could mean 1 MiB or 1 TiB.
+  [[ "$size" =~ ^[1-9][0-9]*[KkMmGg]$ ]] \
+    || die "invalid SIZE '$size' (needs a K, M or G unit, e.g. 512M, 2G)"
+  # swapon and the fstab entry both need an absolute path.
+  [[ "$file" == /* ]] || die "swapfile path must be absolute: $file"
 
   require_root
 
@@ -97,8 +104,12 @@ main() {
     persist_fstab "$file"
   fi
 
-  c_ok "swapfile ready: $file"
-  command -v swapon >/dev/null 2>&1 && run swapon --show
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    c_info "dry run finished: nothing was changed"
+  else
+    c_ok "swapfile ready: $file"
+    swapon --show
+  fi
 }
 
 # dd_allocate SIZE FILE — write a zero-filled file when fallocate is unavailable.
@@ -118,7 +129,7 @@ size_to_mib() {
   unit="${s#"$num"}"
   case "$unit" in
     K|k) echo $(( (num + 1023) / 1024 )) ;;   # round K up to whole MiB
-    M|m|"") echo "$num" ;;
+    M|m) echo "$num" ;;
     G|g) echo $(( num * 1024 )) ;;
     *) die "cannot convert size: $s" ;;
   esac
