@@ -39,3 +39,15 @@ PKG="$REPO_ROOT/05-docker-devops/pkg.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"stub:apt-get update"* ]]
 }
+
+@test "install-jenkins dry run routes the repo file write through run" {
+  stub apt-get
+  stub curl
+  DRY_RUN=1 ASSUME_YES=1 run bash "$REPO_ROOT/05-docker-devops/install-jenkins.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[dry-run] sh -c"*"/etc/apt/sources.list.d/jenkins.list"* ]]
+  [[ "$output" == *"[dry-run] apt-get install -y jenkins"* ]]
+  [[ "$output" == *"nothing was changed"* ]]
+  [[ "$output" != *"installation finished"* ]]
+  [[ "$output" != *"stub:"* ]]
+}

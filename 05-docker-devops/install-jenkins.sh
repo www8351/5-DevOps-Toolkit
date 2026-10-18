@@ -72,12 +72,9 @@ main() {
 
   c_info "writing the Jenkins apt repository"
   local repo_line="deb [signed-by=${JENKINS_KEYRING}] https://pkg.jenkins.io/debian-stable binary/"
-  if [[ "${DRY_RUN:-0}" == "1" ]]; then
-    c_info "DRY_RUN: would write '$repo_line' to $JENKINS_LIST"
-  else
-    printf '%s\n' "$repo_line" > "$JENKINS_LIST"
-    c_ok "wrote $JENKINS_LIST"
-  fi
+  # Through `run` like every other side effect, so DRY_RUN=1 only prints it.
+  run sh -c 'printf "%s\n" "$1" > "$2"' _ "$repo_line" "$JENKINS_LIST"
+  [[ "${DRY_RUN:-0}" == "1" ]] || c_ok "wrote $JENKINS_LIST"
 
   c_info "refreshing package index with the Jenkins repo"
   run apt-get update
@@ -99,7 +96,11 @@ main() {
   ip="$(detect_ip)"
 
   hr
-  c_ok "Jenkins installation finished"
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    c_info "dry run finished: nothing was changed"
+  else
+    c_ok "Jenkins installation finished"
+  fi
   c_info "Open the web UI at: http://${ip}:8080"
   c_info "Initial admin password lives at: $JENKINS_SECRET"
   c_info "Reveal it with: sudo cat $JENKINS_SECRET"
