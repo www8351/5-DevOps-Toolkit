@@ -7,7 +7,7 @@ import os
 import platform
 import sys
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 # Optional TOML support (stdlib 3.11+; pip tomli for 3.8-3.10)
 try:
@@ -83,6 +83,46 @@ def default_keyfile() -> Path:
 
 def pubkey_path(keyfile: Path) -> Path:
     return keyfile.parent / (keyfile.name + ".pub")
+
+
+# ── paramiko helpers (paramiko is imported lazily: it is optional) ───────────
+def ssh_client(missing_msg: str) -> Any:
+    """Return a paramiko SSHClient that checks ~/.ssh/known_hosts first.
+
+    A host already listed must present the same key, or paramiko raises
+    BadHostKeyException. An unknown host is trusted for this session only,
+    which matches OpenSSH's StrictHostKeyChecking=accept-new (D18).
+    """
+    try:
+        import paramiko  # type: ignore[import]
+    except ImportError:
+        raise RuntimeError(missing_msg) from None
+    client = paramiko.SSHClient()
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    return client
+
+
+def remote_exec(
+    client: Any,
+    command: str,
+    stdin_text: Optional[str] = None,
+    timeout: float = 60,
+) -> Tuple[int, str, str]:
+    """Run *command* on an open paramiko client and wait for it to finish.
+
+    *stdin_text* is sent on the command's stdin, which keeps data such as a
+    public key out of the command line. Output is read before the exit status
+    so a large output cannot fill the channel and deadlock.
+    Returns (exit_status, stdout, stderr).
+    """
+    stdin, stdout, stderr = client.exec_command(command, timeout=timeout)
+    if stdin_text is not None:
+        stdin.write(stdin_text)
+        stdin.channel.shutdown_write()
+    out = stdout.read().decode()
+    err = stderr.read().decode()
+    return stdout.channel.recv_exit_status(), out, err
 
 
 # ── RollbackStack ─────────────────────────────────────────────────────────────
