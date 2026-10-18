@@ -70,10 +70,23 @@ in_common() {
 }
 
 @test "require_root refuses a non-root user" {
-  # CI runs as a non-root user, so require_root must reject.
-  in_common 'require_root'
+  # Stub id so the result does not depend on the runner's real uid.
+  in_common 'id() { echo 1000; }; require_root'
   [ "$status" -eq 1 ]
   [[ "$output" == *"needs root"* ]]
+}
+
+@test "require_root passes for root" {
+  in_common 'id() { echo 0; }; require_root && echo continued'
+  [ "$status" -eq 0 ]
+  [ "$output" = "continued" ]
+}
+
+@test "require_root lets a non-root user preview under DRY_RUN=1" {
+  run bash -c "source \"\$COMMON\"; id() { echo 1000; }; DRY_RUN=1 require_root && echo continued"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"preview only"* ]]
+  [[ "$output" == *"continued"* ]]
 }
 
 # ── run (DRY_RUN) ─────────────────────────────────────────────────────────────
