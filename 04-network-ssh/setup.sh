@@ -14,9 +14,9 @@ REQ="${SCRIPT_DIR}/requirements.txt"
 
 # ── find Python 3 ─────────────────────────────────────────────────────────────
 PY=""
-for candidate in python3 python python3.12 python3.11 python3.10 python3.9 python3.8; do
+for candidate in python3 python python3.14 python3.13 python3.12 python3.11 python3.10; do
   if command -v "$candidate" >/dev/null 2>&1; then
-    if "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)' 2>/dev/null; then
+    if "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)' 2>/dev/null; then
       PY="$candidate"
       break
     fi
@@ -24,7 +24,7 @@ for candidate in python3 python python3.12 python3.11 python3.10 python3.9 pytho
 done
 
 if [[ -z "$PY" ]]; then
-  echo "[✗] Python 3.8+ not found. Install it from https://python.org and retry." >&2
+  echo "[✗] Python 3.10+ not found. Install it from https://python.org and retry." >&2
   exit 1
 fi
 

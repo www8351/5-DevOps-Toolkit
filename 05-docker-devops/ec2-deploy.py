@@ -18,7 +18,7 @@ Safety contract (same as the shell tools)
 
 Prerequisites
 -------------
-  * Python 3.8+
+  * Python 3.10+
   * boto3 installed:            pip install -r requirements.txt
   * AWS credentials configured: aws configure   (or env vars / instance role)
   * IAM permissions:            ec2:RunInstances, ec2:CreateTags,

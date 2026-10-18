@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Optional, Tuple
 
-# Optional TOML support (stdlib 3.11+; pip tomli for 3.8-3.10)
+# Optional TOML support (stdlib 3.11+; pip tomli for 3.10)
 try:
     import tomllib  # type: ignore[import]
 except ImportError:

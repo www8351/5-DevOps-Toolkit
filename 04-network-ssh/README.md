@@ -46,7 +46,7 @@ For cross-platform two-VM automation see **[ssh_toolkit](#ssh_toolkit--cross-pla
 
 ## `ssh_toolkit` — Cross-Platform VM-to-VM Automation
 
-A **Python 3.8+ package** that automates the full two-VM SSH lab workflow on **Windows, macOS, and Linux** — no hardcoded usernames or IPs.
+A **Python 3.10+ package** that automates the full two-VM SSH lab workflow on **Windows, macOS, and Linux** — no hardcoded usernames or IPs.
 
 Replaces this manual sequence:
 
