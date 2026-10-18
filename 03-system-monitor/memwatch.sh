@@ -20,8 +20,10 @@ Shows a human-readable memory/swap table, computes the percentage of RAM
 and swap currently in use, and lists any active swap devices.
 
 Options:
-  -b             show the headline table in raw bytes (free -b) instead of -h
+  -b, --bytes    show the headline table in raw bytes (free -b) instead of -h
   -h, --help     show this help and exit
+
+Exit status: 0 on success, 2 on a usage error.
 EOF
 }
 
@@ -29,18 +31,16 @@ EOF
 have() { command -v "$1" >/dev/null 2>&1; }
 
 main() {
-  local raw_bytes=0
+  help_requested "$@" && { usage; exit 0; }
 
-  while getopts ":bh-:" opt; do
-    case "$opt" in
-      b) raw_bytes=1 ;;
-      h) usage; exit 0 ;;
-      -) [[ "$OPTARG" == "help" ]] && { usage; exit 0; }
-         die "unknown option: --$OPTARG (try -h)" ;;
-      \?) die "unknown option: -$OPTARG (try -h)" ;;
+  local raw_bytes=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -b|--bytes) raw_bytes=1; shift ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
-  shift $((OPTIND - 1))
 
   need_cmd free
   need_cmd awk

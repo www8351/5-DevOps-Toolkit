@@ -28,6 +28,8 @@ Optional tools that are absent are reported and skipped, never fatal.
 
 Options:
   -h, --help     show this help and exit
+
+Exit status: 0 on success, 2 on a usage error.
 EOF
 }
 
@@ -106,10 +108,11 @@ section_uptime() {
 }
 
 main() {
+  help_requested "$@" && { usage; exit 0; }
   case "${1:-}" in
-    -h|--help) usage; exit 0 ;;
     "") : ;;
-    *) die "unexpected argument: $1 (try -h)" ;;
+    -*) usage_error "unknown option: $1" ;;
+    *)  usage_error "unexpected argument: $1" ;;
   esac
 
   section_host

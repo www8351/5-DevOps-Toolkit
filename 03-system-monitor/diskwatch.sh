@@ -3,7 +3,7 @@
 # diskwatch.sh — flag mounted filesystems above a usage threshold
 #   commands showcased: df, tail, read
 #
-# Usage: ./diskwatch.sh [-t PERCENT]
+# Usage: ./diskwatch.sh [-w PERCENT]
 #
 set -euo pipefail
 
@@ -14,43 +14,43 @@ usage() {
   cat <<EOF
 diskwatch.sh — flag mounted filesystems above a usage threshold
 
-Usage: $0 [-t PERCENT]
+Usage: $0 [-w PERCENT]
 
 Walks the real filesystems from 'df -hP' and reports each mount point's
 usage. Mounts at or above the threshold are flagged. Pseudo filesystems and
 read-only images that are always full (tmpfs, overlay, snap loop mounts)
 are skipped.
 
-Exit code is 1 if ANY mount is at/above the threshold, which makes this
-script convenient to drop straight into cron or a CI health check.
-
 Options:
-  -t PERCENT     usage threshold, 1-100 (default: 80)
-  -h, --help     show this help and exit
+  -w, --warn PERCENT  usage threshold, 1-100 (default: 80)
+  -h, --help          show this help and exit
+
+Deprecated (still works, removed in 2.0.0): -t PERCENT (use -w/--warn).
+
+Exit status: 0 when every mount is below the threshold, 1 if ANY mount is
+at or above it (ready for cron or a CI health check), 2 on a usage error.
 
 Examples:
   $0                 # warn at 80% and above
-  $0 -t 90           # warn at 90% and above
+  $0 --warn 90       # warn at 90% and above
 EOF
 }
 
 main() {
-  local threshold=80
+  help_requested "$@" && { usage; exit 0; }
 
-  while getopts ":t:h-:" opt; do
-    case "$opt" in
-      t) threshold="$OPTARG" ;;
-      h) usage; exit 0 ;;
-      -) [[ "$OPTARG" == "help" ]] && { usage; exit 0; }
-         die "unknown option: --$OPTARG (try -h)" ;;
-      :) die "option -$OPTARG requires an argument (try -h)" ;;
-      \?) die "unknown option: -$OPTARG (try -h)" ;;
+  local threshold=80
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -w|--warn) need_arg "$@"; threshold="$2"; shift 2 ;;
+      -t)        deprecated -t -w/--warn; need_arg "$@"; threshold="$2"; shift 2 ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
-  shift $((OPTIND - 1))
 
   [[ "$threshold" =~ ^[1-9][0-9]?$|^100$ ]] \
-    || die "threshold must be an integer 1-100, got: $threshold"
+    || usage_error "threshold must be an integer 1-100, got: $threshold"
 
   need_cmd df
 

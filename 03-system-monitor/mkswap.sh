@@ -3,7 +3,7 @@
 # mkswap.sh — create and enable a swapfile, optionally persisting in fstab
 #   commands showcased: fallocate, dd, chmod, mkswap, swapon, /etc/fstab
 #
-# Usage: sudo ./mkswap.sh -s SIZE [-f FILE] [--persist]
+# Usage: sudo ./mkswap.sh -s SIZE [-f FILE] [--persist] [--dry-run] [--yes]
 #
 set -euo pipefail
 
@@ -14,63 +14,63 @@ usage() {
   cat <<EOF
 mkswap.sh — create and enable a swapfile, optionally persisting in fstab
 
-Usage: sudo $0 -s SIZE [-f FILE] [--persist]
+Usage: sudo $0 -s SIZE [-f FILE] [--persist] [--dry-run] [--yes]
 
 Creates a swapfile of the requested SIZE, secures it (chmod 600), formats
 it as swap, and enables it. With --persist it also adds an /etc/fstab entry
 so the swapfile survives reboots.
 
 Options:
-  -s SIZE        swapfile size with a K, M or G unit, at least 1M,
-                 e.g. 512M, 2G (required)
-  -f FILE        absolute swapfile path (default: /swapfile)
-  --persist      append an /etc/fstab entry so swap is enabled on boot
-  -h, --help     show this help and exit
-
-Honoured environment toggles:
-  DRY_RUN=1      print the mutating commands instead of running them
-  ASSUME_YES=1   skip the confirmation prompt (use in CI only)
+  -s, --size SIZE  swapfile size with a K, M or G unit, at least 1M,
+                   e.g. 512M, 2G (required)
+  -f, --file FILE  absolute swapfile path (default: /swapfile)
+  --persist        append an /etc/fstab entry so swap is enabled on boot
+  --dry-run        print the mutating commands instead of running them
+  --yes            skip the confirmation prompt (use in CI only)
+  -h, --help       show this help and exit
 
 Examples:
   sudo $0 -s 2G
-  sudo $0 -s 1G -f /var/swapfile --persist
-  sudo DRY_RUN=1 $0 -s 4G --persist
+  sudo $0 --size 1G --file /var/swapfile --persist
+  $0 --dry-run --size 4G --persist     # preview, no root needed
 
-Put DRY_RUN=1 after sudo: sudo resets the environment, so a variable set
-before it never reaches the script. A normal user can also preview with
-DRY_RUN=1 and no sudo at all.
+The same toggles exist as DRY_RUN=1 and ASSUME_YES=1. With sudo, put them
+after it (sudo DRY_RUN=1 $0 ...): sudo resets the environment, so a
+variable set before it never reaches the script. --dry-run avoids that trap.
+
+Exit status: 0 on success, 1 on a failure or a declined prompt, 2 on a usage
+error.
 EOF
 }
 
 main() {
   local size="" file="/swapfile" persist=0
 
-  # Hand-rolled parser so we can support the long --persist / --help flags
-  # alongside the short -s / -f options.
+  help_requested "$@" && { usage; exit 0; }
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -s) [[ $# -ge 2 ]] || die "option -s requires an argument (try -h)"
-          size="$2"; shift 2 ;;
-      -f) [[ $# -ge 2 ]] || die "option -f requires an argument (try -h)"
-          file="$2"; shift 2 ;;
+      -s|--size) need_arg "$@"; size="$2"; shift 2 ;;
+      -f|--file) need_arg "$@"; file="$2"; shift 2 ;;
       --persist) persist=1; shift ;;
-      -h|--help) usage; exit 0 ;;
-      *) die "unknown argument: $1 (try -h)" ;;
+      --dry-run) export DRY_RUN=1; shift ;;
+      --yes)     export ASSUME_YES=1; shift ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)  usage_error "unexpected argument: $1" ;;
     esac
   done
 
-  [[ -n "$size" ]] || die "missing required option -s SIZE (try -h)"
+  [[ -n "$size" ]] || usage_error "missing required option -s/--size SIZE"
   # The unit is mandatory: fallocate would read a bare number as bytes while
   # the dd fallback reads it as MiB, so 1048576 could mean 1 MiB or 1 TiB.
   # At most 9 digits keeps the KiB arithmetic far from 64-bit overflow.
   [[ "$size" =~ ^[1-9][0-9]{0,8}[KkMmGg]$ ]] \
-    || die "invalid SIZE '$size' (needs a K, M or G unit, e.g. 512M, 2G)"
+    || usage_error "invalid SIZE '$size' (needs a K, M or G unit, e.g. 512M, 2G)"
   local kib
   kib="$(size_to_kib "$size")"
   # mkswap rejects tiny files, so refuse before anything is allocated.
-  [[ "$kib" -ge 1024 ]] || die "SIZE '$size' is too small (minimum 1M)"
+  [[ "$kib" -ge 1024 ]] || usage_error "SIZE '$size' is too small (minimum 1M)"
   # swapon and the fstab entry both need an absolute path.
-  [[ "$file" == /* ]] || die "swapfile path must be absolute: $file"
+  [[ "$file" == /* ]] || usage_error "swapfile path must be absolute: $file"
 
   require_root
 
@@ -90,8 +90,7 @@ main() {
   c_info "About to create a ${size} swapfile at ${file}"
   [[ "$persist" -eq 1 ]] && c_info "It will be persisted in /etc/fstab"
 
-  confirm "Proceed with creating and enabling this swapfile?" \
-    || die "aborted by user"
+  confirm_or_abort "Proceed with creating and enabling this swapfile?"
 
   # Allocate the file. fallocate is instant; fall back to dd where the
   # filesystem (e.g. some older ext/zfs setups) does not support fallocate.

@@ -31,7 +31,7 @@ A few real invocations:
 ./topproc.sh -m -n 5
 
 # Alert (exit 1) when any real filesystem is at or above 90%
-./diskwatch.sh -t 90
+./diskwatch.sh --warn 90
 
 # RAM/swap report with percentages
 ./memwatch.sh
