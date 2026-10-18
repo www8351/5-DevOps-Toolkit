@@ -90,3 +90,21 @@ tool_scripts() {
     return 1
   fi
 }
+
+@test "every tool treats -- as the end of options, never as an unknown option (D22)" {
+  # `-- --x` makes "--x" a plain argument. Every tool must then either reject
+  # it as an unexpected argument or use it as a value; none may call -- unknown.
+  # DRY_RUN, a temp HOME and a closed stdin keep the odd tool that does run
+  # harmless.
+  local failures=() script
+  while IFS= read -r script; do
+    DRY_RUN=1 HOME="$BATS_TEST_TMPDIR" run bash "$script" -- --x </dev/null
+    ! grep -qx '.*unknown option: --' <<<"$output" || failures+=("$(basename "$script")")
+  done < <(tool_scripts)
+
+  if [ "${#failures[@]}" -ne 0 ]; then
+    printf 'tools that reject --:\n'
+    printf '  - %s\n' "${failures[@]}"
+    return 1
+  fi
+}

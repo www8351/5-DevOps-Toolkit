@@ -82,6 +82,10 @@ show_listening() {
 
 main() {
   help_requested "$@" && { usage; exit 0; }
+  if [[ "${1:-}" == "--" ]]; then
+    shift
+    [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"
+  fi
   case "${1:-}" in
     "") : ;;
     -*) usage_error "unknown option: $1" ;;

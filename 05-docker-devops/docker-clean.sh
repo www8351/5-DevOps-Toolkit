@@ -45,6 +45,7 @@ main() {
       --containers-only) do_images=0 ;;
       --dry-run)         export DRY_RUN=1 ;;
       --yes)             export ASSUME_YES=1 ;;
+      --)                shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
       -*)                usage_error "unknown option: $1" ;;
       *)                 usage_error "unexpected argument: $1" ;;
     esac

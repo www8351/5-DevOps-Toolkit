@@ -47,6 +47,13 @@ main() {
     case "$1" in
       --discover) discover=1; shift ;;
       -p|--ports) need_arg "$@"; ports="$2"; shift 2 ;;
+      --)
+        shift
+        [[ $# -le 1 ]] || usage_error "only one target allowed (got extra: $2)"
+        [[ $# -eq 0 || -z "$target" ]] || usage_error "only one target allowed (got extra: $1)"
+        [[ $# -eq 1 ]] && target="$1"
+        break
+        ;;
       -*) usage_error "unknown option: $1" ;;
       *)
         [[ -z "$target" ]] || usage_error "only one target allowed (got extra: $1)"

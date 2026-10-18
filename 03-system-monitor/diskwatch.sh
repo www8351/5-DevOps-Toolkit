@@ -46,6 +46,7 @@ main() {
       -w|--warn) need_arg "$@"; threshold="$2"; shift 2 ;;
       -t)        deprecated -t -w/--warn; need_arg "$@"; threshold="$2"; shift 2 ;;
       --json)    json=1; shift ;;
+      --) shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
       -*) usage_error "unknown option: $1" ;;
       *)  usage_error "unexpected argument: $1" ;;
     esac

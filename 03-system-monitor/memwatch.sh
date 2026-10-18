@@ -42,6 +42,7 @@ main() {
       -b|--bytes) raw_bytes=1; shift ;;
       -w|--warn)  need_arg "$@"; warn="$2"; shift 2 ;;
       --json)     json=1; shift ;;
+      --) shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
       -*) usage_error "unknown option: $1" ;;
       *)  usage_error "unexpected argument: $1" ;;
     esac

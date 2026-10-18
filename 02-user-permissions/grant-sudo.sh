@@ -40,6 +40,7 @@ main() {
       -u|--user) need_arg "$@"; user="$2"; shift 2 ;;
       --dry-run) export DRY_RUN=1; shift ;;
       --yes)     export ASSUME_YES=1; shift ;;
+      --) shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
       -*) usage_error "unknown option: $1" ;;
       *)  usage_error "unexpected argument: $1" ;;
     esac

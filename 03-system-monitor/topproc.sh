@@ -38,6 +38,7 @@ main() {
     case "$1" in
       -m|--mem) by_mem=1; shift ;;
       -n|--top) need_arg "$@"; count="$2"; shift 2 ;;
+      --) shift; [[ $# -eq 0 ]] || usage_error "unexpected argument: $1"; break ;;
       -*) usage_error "unknown option: $1" ;;
       *)  usage_error "unexpected argument: $1" ;;
     esac
