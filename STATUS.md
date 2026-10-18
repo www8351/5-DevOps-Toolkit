@@ -5,9 +5,10 @@ _Last updated: 2026-10-18_
 ## Where the project stands
 **2026-10-18: portfolio polish wave in progress (Phases 5 to 9).** The plan fixes what a reviewer
 would hit in the first five minutes, then hardens the Python, widens the tests, adds release
-hygiene and polishes the docs. **Phases 5 (shell fixes) and 6 (Python correctness and safety)
-are done** on branch `ccr-dec6d5a6-417b42`: 48 bats + 103 pytest = 151 tests, `make all` clean.
-The README still states the old counts (53 tests); Phase 9 recounts them.
+hygiene and polishes the docs. **Phases 5 (shell fixes), 6 (Python correctness and safety) and 7
+(shell behaviour tests) are done** on branch `ccr-dec6d5a6-417b42`, draft PR #3: 74 bats + 103 pytest
+= 177 tests, `make all` clean as root and as a non-root user. The README still states the old counts
+(53 tests); Phase 9 recounts them.
 
 **v1 complete + hardened.** A 5-module DevOps shell toolkit is built, tested and pushed to GitHub as a
 public repo. Now **CI-gated** (shellcheck + bats + pytest + Makefile-parse + ruff — all 5 jobs green),
@@ -90,14 +91,24 @@ Fixed in the header, both intros, the DRY paragraph and the roadmap. Test and CI
 - [x] New pytest files: `test_cli.py`, `test_network_manager.py`, `test_remote.py`, `05-docker-devops/tests/test_ec2_deploy.py`.
 - [x] Verified end to end against a loopback OpenSSH server in the build container (see PROGRESS 2026-10-18).
 
+## Done (added 2026-10-18), Phase 7: shell behaviour tests
+- [x] `tests/bats/file_text.bats`: txtstats, logtop, bigfiles, dirsnap, backup round trip on temp fixtures.
+- [x] `logtop.sh` no longer dies with exit 141 on a log bigger than a pipe buffer, nor exits 1 on an empty filter.
+- [x] `dirsnap.sh` and `bigfiles.sh` survive unreadable subdirectories (and `/proc`).
+- [x] `permfix.sh`: octal modes only, refuses `/`, dry run counts what would change; audit-perms tested on a temp tree.
+- [x] `diskwatch.sh`: no false alarm on snap `/dev/loop*` mounts; mount points with spaces kept whole; tested with a fake `df`.
+- [x] `httpcheck.sh` exits 1 when any endpoint fails (cron/CI health check); tested with a fake `curl`.
+- [x] `docker-clean.sh` fails when the daemon is unreachable (was "already tidy"); plan shows created/dead with `-f`.
+
 ## Open / not done (user steps — need a human + real hardware)
 - [ ] Record `docs/demo.cast` / `demo.gif` from a live terminal and embed the GIF in the README.
 - [ ] `ssh_toolkit` live-VM smoke test (needs a real two-VM lab).
 - [x] Repo-name mismatch resolved — canonical name is `5-DevOps-Toolkit` (the remote); all docs aligned (D16).
 
 ## Next best action
-1. Phase 7: behaviour tests for the remaining read-only shell tools, `httpcheck.sh` exit code.
-2. Then Phases 8 and 9 per the approved plan (repo hygiene and release, docs).
+1. Phase 8: repo hygiene and release (pinned actions, dependabot, Python matrix, CHANGELOG, release
+   workflow, SECURITY.md, D21).
+2. Phase 9: docs polish (recount every number in the README, style sweep).
 3. Human steps after the merge: record the demo GIF (only now that banners render correctly),
    push the `v1.0.0` tag, run `ssh_toolkit` against a real two-VM lab.
 

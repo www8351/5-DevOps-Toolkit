@@ -4,6 +4,38 @@ A dated log of what happened, what was tried, what worked.
 
 ---
 
+## 2026-10-18: Phase 7, shell behaviour tests
+
+**Goal:** Grow the test count with tests of real behaviour, not only `-h`, and fix what they find.
+
+**What was done**
+- New bats files per module: `file_text.bats`, `network_ssh.bats`, plus additions to `system_monitor`,
+  `user_permissions` and `docker_devops`. Read-only tools run on temp fixtures; tools that read the system
+  (`df`, `curl`, `docker`) get a stub on PATH.
+- Fixes the tests forced (each test was seen failing on the old code first):
+  - `logtop.sh`: `sort | head` under pipefail died with exit 141 once the unique values passed 64 KiB (a
+    100k-line log); a `-p` filter with no match exited 1. awk now takes the top N; grep's "no match" is OK.
+  - `dirsnap.sh`: one unreadable subdirectory (or `/proc`) aborted before the total.
+  - `bigfiles.sh`: find's exit 1 on an unreadable directory was read as "no -printf", switching to the
+    macOS-incompatible `du -b` path.
+  - `permfix.sh`: any MODE string was accepted, `/` was not refused, and the dry run did not say what
+    would change.
+  - `diskwatch.sh`: snap squashfs loop mounts (always 100%) made it alarm on every Ubuntu desktop; mount
+    points with spaces were cut at the space.
+  - `httpcheck.sh`: exit 0 even with failed endpoints.
+  - `docker-clean.sh`: a stopped daemon was reported as "already tidy"; with `-f` the plan hid the
+    created/dead containers it was about to remove; dry run claimed "removed".
+
+**What was tried / found**
+- The first fake `docker` stub matched `-q` while the script passes `-aq`, so two tests passed for the
+  wrong reason. Caught by asserting the whole dry-run line, stub fixed, and the tests re-run against the
+  old script to confirm they fail there.
+- Unreadable-directory tests skip as root (root reads everything) and run on the non-root CI runner; they
+  were also run here as `nobody`.
+
+**Verification**
+- `make all`: shellcheck, `bash -n`, ruff, 74 bats, 103 pytest, all clean. Bats also clean as `nobody`.
+
 ## 2026-10-18: Phase 6, Python correctness and safety
 
 **Goal:** Make `ssh_toolkit` and `ec2-deploy.py` hold up to a security-minded reader.
