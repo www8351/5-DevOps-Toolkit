@@ -1,2 +1,2 @@
 # Runtime dependency of ec2-deploy.py (the shell tools in this folder need none).
-boto3>=1.43.114
+boto3>=1.43.117
